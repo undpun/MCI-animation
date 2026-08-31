@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>MCI 2D Complete Game · v5.0 · Clinical Decision Debrief</title>
+<title>MCI 2D Complete Game · v6.5 · Radio–Backpack Alignment</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -583,13 +583,15 @@ tr.row-hover:hover td{background:rgba(255,255,255,.02);}
 }
 
 /* ---------- Zone ↔ Commander communications (persistent, no app re-render) ---------- */
-#communicationHost{position:fixed;right:16px;bottom:16px;z-index:1550;font-family:var(--font);}
+#communicationHost{position:fixed;right:14px;bottom:47px;z-index:1550;font-family:var(--font);}
 #communicationHost.hidden{display:none;}
-.comm-launch{position:relative;display:flex;align-items:center;gap:7px;border:1px solid rgba(75,228,216,.5);border-radius:999px;background:#102128;color:#e9ffff;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.4);cursor:pointer;font-weight:800;letter-spacing:.02em;}
-.comm-launch:hover{border-color:var(--cyan);transform:translateY(-1px);}
+.comm-launch{position:relative;display:grid;place-items:center;width:78px;height:86px;padding:0;border:0;border-radius:0;background:transparent;color:#e9ffff;box-shadow:none;cursor:pointer;transition:transform .16s ease,filter .16s ease;}
+.comm-launch:hover{transform:translateY(-3px) scale(1.055);filter:drop-shadow(0 0 13px rgba(75,228,216,.55))}
+.comm-radio-icon{position:relative;display:grid;place-items:center;width:74px;height:78px}.comm-radio-asset{display:block;width:74px;height:78px;object-fit:contain;filter:drop-shadow(1px 0 0 rgba(255,255,255,.92)) drop-shadow(-1px 0 0 rgba(255,255,255,.92)) drop-shadow(0 1px 0 rgba(255,255,255,.92)) drop-shadow(0 -1px 0 rgba(255,255,255,.92)) drop-shadow(0 7px 8px #000c)}.comm-radio-label{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);padding:2px 5px;border:1px solid #eaffffff;border-radius:5px;background:#07131add;color:#fff;font:900 7px/1 var(--font-mono);letter-spacing:.08em;white-space:nowrap}
+.comm-launch>.comm-unread{position:absolute;right:-5px;top:-5px;min-width:22px;height:22px;border:2px solid #07131a;box-shadow:0 3px 9px #0009}.comm-launch>.comm-signal{position:absolute;left:-1px;top:2px}
 .comm-unread{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#ef4444;color:#fff;font:800 10px/1 var(--font-mono);}
 .comm-unread.normal{background:#334155;color:#fff}.comm-unread.request{background:#eab308;color:#17130a}.comm-unread.urgent{background:#ef4444;color:#fff}.comm-signal{width:8px;height:8px;border-radius:50%;background:#eab308;box-shadow:0 0 0 3px rgba(234,179,8,.14)}.comm-signal.urgent{background:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.14)}
-.comm-panel{position:absolute;right:0;bottom:58px;width:390px;max-width:calc(100vw - 24px);height:min(570px,calc(100vh - 105px));display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(75,228,216,.35);border-radius:13px;background:#111922;box-shadow:0 18px 48px rgba(0,0,0,.58);}
+.comm-panel{position:absolute;right:0;bottom:25px;width:390px;max-width:calc(100vw - 24px);height:min(570px,calc(100vh - 105px));display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(75,228,216,.35);border-radius:13px;background:#111922;box-shadow:0 18px 48px rgba(0,0,0,.58);}
 .comm-panel.command-view,.comm-panel.monitor-view{width:690px;}
 .comm-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border-bottom:1px solid var(--line);background:linear-gradient(110deg,rgba(47,211,199,.14),rgba(22,31,42,.98));}
 .comm-head-title{font-weight:800;font-size:13px}.comm-head-sub{font-size:10px;color:var(--ink-faint);margin-top:2px}.comm-close{width:28px;height:28px;border:1px solid var(--line);border-radius:7px;background:transparent;color:var(--ink-dim);cursor:pointer;}
@@ -599,7 +601,7 @@ tr.row-hover:hover td{background:rgba(255,255,255,.02);}
 .comm-composer{border-top:1px solid var(--line);padding:9px;background:#121b25;}.comm-quick{display:flex;gap:5px;overflow-x:auto;padding-bottom:7px;scrollbar-width:thin}.comm-chip{flex:0 0 auto;border:1px solid var(--line);border-radius:999px;background:#17222d;color:var(--ink-dim);padding:5px 8px;font-size:10px;cursor:pointer;white-space:nowrap}.comm-chip:hover{border-color:var(--cyan);color:var(--ink)}.comm-chip.urgent{border-color:rgba(239,68,68,.55);color:#fca5a5}.comm-input-row{display:flex;gap:6px}.comm-input-row input{min-width:0;flex:1}.comm-send{flex:0 0 auto}.comm-locked{padding:10px;border:1px dashed var(--line);border-radius:8px;color:var(--ink-faint);font-size:11px;text-align:center}.comm-structured{padding:8px;margin-bottom:7px;border:1px solid rgba(234,179,8,.28);border-radius:8px;background:rgba(234,179,8,.05)}.comm-structured .grid{gap:6px}.comm-structured label{font-size:9px;color:var(--ink-faint)}.comm-structured input,.comm-structured select{padding:6px;font-size:11px}.comm-notice{padding:5px 9px;background:rgba(75,228,216,.08);color:var(--cyan);font-size:10px;border-bottom:1px solid rgba(75,228,216,.15)}
 .head-zone-control{display:flex;justify-content:flex-end;align-items:center;gap:7px;margin:-5px 0 10px;min-height:30px}.head-zone-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border:1px solid rgba(234,179,8,.35);border-radius:999px;background:rgba(234,179,8,.08);color:#fde68a;font-size:11px;font-weight:700}.head-zone-btn{border:1px solid rgba(234,179,8,.55);border-radius:8px;background:rgba(234,179,8,.12);color:#fde68a;padding:6px 9px;font-size:11px;cursor:pointer}.head-zone-btn:hover{background:rgba(234,179,8,.2)}
 .comm-roster-actions{display:flex;align-items:center;gap:5px}.comm-roster-btn{position:relative;width:31px;height:29px;border:1px solid var(--line);border-radius:7px;background:#151f29;color:var(--ink-dim);cursor:pointer}.comm-roster-btn.head{color:#facc15;border-color:rgba(250,204,21,.5);background:rgba(250,204,21,.08)}.comm-roster-btn .comm-unread{position:absolute;right:-7px;top:-7px;min-width:17px;height:17px;font-size:9px;padding:0 4px}
-@media (max-width:700px){#communicationHost{right:8px;bottom:8px}.comm-panel,.comm-panel.command-view,.comm-panel.monitor-view{position:fixed;left:8px;right:8px;bottom:62px;width:auto;max-width:none;height:min(620px,calc(100vh - 78px))}.comm-layout{grid-template-columns:120px 1fr}.comm-zone-list{padding:4px}.comm-zone-tab{padding:8px 27px 8px 6px}.comm-zone-tab small{display:none}body.comm-open #sceneViewerHost{display:none}}
+@media (max-width:700px){#communicationHost{right:5px;bottom:52px}.comm-launch{width:68px;height:76px}.comm-radio-icon,.comm-radio-asset{width:65px;height:70px}.comm-panel,.comm-panel.command-view,.comm-panel.monitor-view{position:fixed;left:8px;right:8px;bottom:76px;width:auto;max-width:none;height:min(620px,calc(100vh - 94px))}.comm-layout{grid-template-columns:120px 1fr}.comm-zone-list{padding:4px}.comm-zone-tab{padding:8px 27px 8px 6px}.comm-zone-tab small{display:none}body.comm-open #sceneViewerHost{display:none}}
 
 /* ---------- Parking fleet status: lightweight labels + live countdown only ---------- */
 .supply-status-list{display:grid;gap:8px;margin-top:9px}.supply-status-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(120px,.8fr) auto;gap:10px;align-items:center;padding:10px 11px;border:1px solid rgba(56,189,248,.28);border-radius:8px;background:rgba(12,22,31,.72)}.supply-status-row.waiting{border-color:rgba(245,158,11,.32)}.supply-status-row.delivered{border-color:rgba(34,197,94,.28);opacity:.82}.supply-item{font-weight:800;color:#e7f8ff}.supply-route{font-size:10px;color:var(--ink-dim)}.supply-eta{font:800 11px/1.3 var(--font-mono);color:#67e8f9;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:7px}.supply-eta .btn{font-family:var(--font-ui);white-space:nowrap}.supply-request-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.supply-request-state{margin-top:7px;font-size:10px;color:var(--ink-dim)}
@@ -848,8 +850,8 @@ input[type=text],input[type=password],input[type=number],select,textarea{backgro
 .howto-open-btn{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 10px;border:1px solid rgba(75,228,216,.42);border-radius:999px;background:rgba(75,228,216,.08);color:#dffffc;font:800 11px/1 var(--font);cursor:pointer;white-space:nowrap}.howto-open-btn:hover{background:rgba(75,228,216,.15);border-color:var(--cyan)}.howto-open-btn .howto-q{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--cyan);color:#071219;font:900 13px/1 var(--font-mono)}
 #howToPlayHost{position:fixed;inset:0;z-index:2600;pointer-events:auto;font-family:var(--font)}#howToPlayHost.hidden{display:none}.howto-spotlight{position:fixed;border:2px solid #71fff3;border-radius:12px;box-shadow:0 0 0 9999px rgba(4,8,13,.78),0 0 0 5px rgba(75,228,216,.14),0 0 28px rgba(75,228,216,.42);transition:top .18s ease,left .18s ease,width .18s ease,height .18s ease;pointer-events:none}.howto-spotlight.no-target{inset:0!important;width:auto!important;height:auto!important;border:0;border-radius:0;box-shadow:inset 0 0 0 9999px rgba(4,8,13,.82)}
 .howto-card{position:fixed;width:min(390px,calc(100vw - 24px));max-height:min(570px,calc(100vh - 24px));overflow:auto;padding:0;border:1px solid rgba(113,255,243,.45);border-radius:16px;background:linear-gradient(155deg,#17232e,#0e161f 72%);box-shadow:0 22px 70px rgba(0,0,0,.72);pointer-events:auto}.howto-card::before{content:"";position:absolute;width:14px;height:14px;background:#14212b;border-left:1px solid rgba(113,255,243,.45);border-top:1px solid rgba(113,255,243,.45);transform:rotate(45deg)}.howto-card[data-placement="below"]::before{top:-8px;left:var(--arrow-x,32px)}.howto-card[data-placement="above"]::before{bottom:-8px;left:var(--arrow-x,32px);transform:rotate(225deg)}.howto-card[data-placement="left"]::before{right:-8px;top:var(--arrow-y,32px);transform:rotate(135deg)}.howto-card[data-placement="right"]::before{left:-8px;top:var(--arrow-y,32px);transform:rotate(-45deg)}.howto-card[data-placement="center"]::before{display:none}
-.howto-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line);background:rgba(75,228,216,.055)}.howto-brand{font:800 10px/1 var(--font-mono);letter-spacing:.12em;color:var(--cyan)}.howto-skip{border:0;background:transparent;color:var(--ink-faint);font-size:11px;cursor:pointer}.howto-skip:hover{color:#fff}.howto-content{padding:16px}.howto-visual{display:flex;align-items:center;justify-content:center;gap:7px;min-height:64px;margin-bottom:13px;padding:10px;border:1px solid rgba(111,137,163,.2);border-radius:12px;background:radial-gradient(circle at 50% 20%,rgba(75,228,216,.12),transparent 68%)}.howto-visual-step{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:52px;color:var(--ink-faint);font-size:9px;text-align:center}.howto-visual-step span{display:grid;place-items:center;width:38px;height:38px;border:1px solid rgba(75,228,216,.3);border-radius:10px;background:#17242e;font-size:21px}.howto-visual-arrow{color:var(--cyan);font-weight:900}.howto-kicker{margin-bottom:5px;color:var(--station-accent);font:800 9px/1 var(--font-mono);letter-spacing:.12em}.howto-title{margin:0;color:#f5fbff;font-size:19px;line-height:1.25}.howto-body{margin-top:9px;color:var(--ink-dim);font-size:12px;line-height:1.65}.howto-body b{color:#fff}.howto-callout{display:flex;gap:7px;margin-top:10px;padding:8px 9px;border-left:3px solid var(--amber);border-radius:6px;background:rgba(255,181,71,.08);color:#f8d7a3;font-size:10.5px;line-height:1.5}.howto-bottom{padding:12px 14px;border-top:1px solid var(--line);background:rgba(7,12,18,.28)}.howto-progress{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.howto-dots{display:flex;gap:5px}.howto-dot{width:6px;height:6px;border-radius:50%;background:#34404d}.howto-dot.done{background:rgba(75,228,216,.45)}.howto-dot.active{width:18px;border-radius:99px;background:var(--cyan)}.howto-count{color:var(--ink-faint);font:700 9px/1 var(--font-mono)}.howto-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px}.howto-actions .btn{min-height:35px}.howto-next{min-width:105px}.howto-keyhint{margin-right:auto;color:var(--ink-faint);font-size:9px}
-@media (max-width:760px){.howto-open-btn{padding:6px 8px}.howto-open-btn .howto-label{display:none}.howto-card{left:8px!important;right:8px!important;bottom:8px!important;top:auto!important;width:auto;max-height:min(52vh,470px)}.howto-card::before{display:none}.howto-spotlight{transition:none}.howto-keyhint{display:none}.howto-visual{min-height:54px}.howto-visual-step span{width:34px;height:34px;font-size:18px}}
+.howto-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line);background:rgba(75,228,216,.055)}.howto-brand{font:800 10px/1 var(--font-mono);letter-spacing:.12em;color:var(--cyan)}.howto-skip{border:0;background:transparent;color:var(--ink-faint);font-size:11px;cursor:pointer}.howto-skip:hover{color:#fff}.howto-content{padding:16px}.howto-kicker{margin-bottom:5px;color:var(--station-accent);font:800 9px/1 var(--font-mono);letter-spacing:.12em}.howto-title{margin:0;color:#f5fbff;font-size:19px;line-height:1.25}.howto-body{margin-top:9px;color:var(--ink-dim);font-size:12px;line-height:1.65}.howto-body b{color:#fff}.howto-callout{display:flex;gap:7px;margin-top:10px;padding:8px 9px;border-left:3px solid var(--amber);border-radius:6px;background:rgba(255,181,71,.08);color:#f8d7a3;font-size:10.5px;line-height:1.5}.howto-bottom{padding:12px 14px;border-top:1px solid var(--line);background:rgba(7,12,18,.28)}.howto-progress{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.howto-dots{display:flex;gap:5px}.howto-dot{width:6px;height:6px;border-radius:50%;background:#34404d}.howto-dot.done{background:rgba(75,228,216,.45)}.howto-dot.active{width:18px;border-radius:99px;background:var(--cyan)}.howto-count{color:var(--ink-faint);font:700 9px/1 var(--font-mono)}.howto-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px}.howto-actions .btn{min-height:35px}.howto-next{min-width:105px}.howto-keyhint{margin-right:auto;color:var(--ink-faint);font-size:9px}
+@media (max-width:760px){.howto-open-btn{padding:6px 8px}.howto-open-btn .howto-label{display:none}.howto-card{left:8px!important;right:8px!important;bottom:8px!important;top:auto!important;width:auto;max-height:min(52vh,470px)}.howto-card::before{display:none}.howto-spotlight{transition:none}.howto-keyhint{display:none}}
 
 /* ---------- Saved games & patient journey review ---------- */
 .pixel-patient[data-act="patientReviewLive"],.pixel-patient[data-act="archivePatientReview"],.vehicle-passenger[data-act="patientReviewLive"],.vehicle-passenger[data-act="archivePatientReview"]{cursor:pointer}.pixel-patient[data-act="patientReviewLive"],.pixel-patient[data-act="archivePatientReview"]{border-radius:9px;padding:4px;transition:background .15s,transform .12s}.pixel-patient[data-act="patientReviewLive"]:hover,.pixel-patient[data-act="archivePatientReview"]:hover{background:rgba(75,228,216,.08);transform:translateY(-2px)}
@@ -874,6 +876,8 @@ input[type=text],input[type=password],input[type=number],select,textarea{backgro
 @media (max-width:760px){.twoD-hud{min-width:760px}.twoD-scroll{height:calc(100vh - 58px)}.twoD-stage{min-width:980px}.twoD-hud-stat:nth-of-type(n+3){display:none}.twoD-zone-content{padding:12px 10px 60px}.twoD-zone-bar{min-width:640px}.zone-borrow-source{grid-template-columns:1fr}}
 /* ---------- Persistent original 2D renderer ---------- */
 #twoDPlayerHost{position:fixed;inset:0;z-index:20;background:#0b1217}#twoDPlayerHost.hidden{display:none}#twoDPlayerFrame{display:block;width:100%;height:100%;border:0;background:#0b1217;opacity:0;transition:opacity .12s ease}
+.vehicle-capacity-hud{position:fixed;z-index:82;left:50%;top:10px;transform:translateX(-50%);display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid #70e5da66;border-radius:12px;background:#07131aeb;box-shadow:0 10px 28px #000a,0 0 22px #2fd3c722;backdrop-filter:blur(8px);pointer-events:none}.vehicle-capacity-hud.hidden{display:none}.vehicle-capacity-title{padding-right:8px;border-right:1px solid #ffffff24;color:#79ede3;font:900 8px/1.2 var(--font-mono);letter-spacing:.08em}.vehicle-capacity-item{display:flex;align-items:center;gap:5px;padding:4px 7px;border:1px solid #ffffff18;border-radius:8px;background:#ffffff08;color:#eaffff;font:800 9px/1.2 var(--font-mono);white-space:nowrap}.vehicle-capacity-item svg{width:27px;height:18px;filter:drop-shadow(0 3px 2px #000b)}.vehicle-capacity-item b{color:#fff}.vehicle-capacity-item span{color:#bcd1d8}
+.player-howto-dock{position:fixed;z-index:1540;left:104px;right:auto;top:16px;display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:6px 10px;border:1px solid #71fff38c;border-radius:999px;background:#07131aef;color:#eaffff;box-shadow:0 8px 25px #000a,0 0 18px #2fd3c72b;font:900 9px/1 var(--font);cursor:pointer}.player-howto-dock:hover{border-color:#a5fff8;box-shadow:0 9px 28px #000b,0 0 26px #2fd3c755}.player-howto-dock.hidden{display:none}.player-howto-dock .howto-q{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#59eadf;color:#061217;font:1000 13px/1 var(--font-mono)}
 body.twoD-player-mode{overflow:hidden;background:#0b1217}body.twoD-player-mode #app{position:fixed;inset:0;z-index:80;pointer-events:none;background:transparent}
 body.twoD-player-mode #app .twoD-work-drawer,body.twoD-player-mode #app .toasts,body.twoD-player-mode #app .connerr,body.twoD-player-mode #app .mission-end-screen,body.twoD-player-mode #app .debrief-shell{pointer-events:auto}
 .twoD-work-drawer{position:fixed;z-index:90;right:12px;top:72px;bottom:12px;width:min(570px,calc(100vw - 24px));overflow:auto;border:1px solid #ffffff2b;border-radius:16px;background:rgba(10,19,25,.96);box-shadow:0 28px 90px #000d;backdrop-filter:blur(10px)}
@@ -882,7 +886,12 @@ body.twoD-player-mode #app .twoD-work-drawer,body.twoD-player-mode #app .toasts,
 .twoD-work-head{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:9px;padding:10px 12px;border-bottom:1px solid #ffffff20;background:#102029f2}.twoD-work-head b{font:800 14px/1 var(--font-display)}.twoD-work-head .spacer{flex:1}.twoD-work-body{padding:12px}.twoD-work-body .station-hero{margin-top:0}.twoD-work-body .patient-search-card{position:relative}
 .twoD-floating-tip{position:fixed;z-index:85;right:12px;bottom:12px;max-width:300px;padding:8px 11px;border:1px solid #ffffff25;border-radius:10px;background:#07131ae8;color:#cfe2e5;font-size:10px;line-height:1.45;pointer-events:none}
 .twoD-build-badge{position:fixed;z-index:86;left:12px;bottom:12px;padding:8px 11px;border:1px solid #5ff4e6;border-radius:10px;background:#07131af0;color:#bafff8;box-shadow:0 0 24px #2fd3c744;font:900 10px/1.2 var(--font-mono);letter-spacing:.06em;pointer-events:none}.twoD-build-badge b{color:#fff}
-@media(max-width:760px){.twoD-work-drawer{left:8px;right:8px;top:66px;bottom:8px;width:auto}.twoD-floating-tip{display:none}}
+@media(max-width:760px){.twoD-work-drawer{left:8px;right:8px;top:66px;bottom:8px;width:auto}.twoD-floating-tip{display:none}.vehicle-capacity-hud{top:7px;max-width:calc(100vw - 120px);gap:4px;padding:5px 6px}.vehicle-capacity-title{display:none}.vehicle-capacity-item{padding:3px 5px;font-size:7px}.vehicle-capacity-item svg{width:22px;height:15px}.player-howto-dock{left:92px;right:auto;top:13px;padding:6px}.player-howto-dock .howto-label{display:none}}
+
+.clock-pause-overlay{position:fixed;z-index:2500;inset:0;display:grid;place-items:center;background:rgba(3,8,13,.78);backdrop-filter:blur(5px);pointer-events:auto}.clock-pause-overlay.hidden{display:none}.clock-pause-card{min-width:min(360px,calc(100vw - 32px));padding:28px 24px;border:1px solid rgba(91,232,220,.5);border-radius:18px;background:linear-gradient(150deg,#17242f,#0b131b);box-shadow:0 24px 80px #000d,0 0 34px rgba(75,228,216,.2);text-align:center}.clock-pause-icon{font-size:38px}.clock-pause-card b{display:block;margin-top:8px;font:900 27px/1.2 var(--font-display);color:#efffff}.clock-pause-card small{display:block;margin-top:8px;color:var(--ink-dim);font-size:11px}.pill.status-PAUSED{border-color:rgba(251,191,36,.55);background:rgba(251,191,36,.12);color:#fde68a}
+
+.mci-howto-demo-player-panel{position:fixed;z-index:1800;right:12px;top:72px;bottom:12px;width:min(570px,calc(100vw - 24px));overflow:auto;pointer-events:none}.mci-howto-demo-player-panel .patient-card{margin:0;background:#101923f5;box-shadow:0 20px 54px #000c}.mci-howto-demo-player-panel select,.mci-howto-demo-player-panel input,.mci-howto-demo-player-panel button{pointer-events:none}.mci-howto-demo-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.mci-howto-demo-transfer-modal{position:fixed;z-index:1810;right:18px;top:96px;width:min(470px,calc(100vw - 36px));max-height:calc(100vh - 118px);overflow:auto;padding:16px;border:1px solid #55d8ce88;border-radius:14px;background:#101c25f5;box-shadow:0 20px 54px #000c;pointer-events:none}.mci-howto-demo-transfer-modal h3{margin:0 0 11px}.mci-howto-demo-transfer-modal label{display:grid;gap:5px;margin-top:9px;color:var(--ink-dim);font-size:10px}
+@media(max-width:760px){.mci-howto-demo-player-panel{left:8px;right:8px;top:66px;bottom:8px;width:auto}.mci-howto-demo-transfer-modal{left:8px;right:8px;top:70px;width:auto}}
 
 /* ---------- Start Game · Hospital Base / ALS staging ---------- */
 .startgame-shell{height:100vh;background:#071018;color:#eef8fb;overflow:hidden}.startgame-topbar{position:relative;z-index:40;display:flex;align-items:center;gap:10px;height:58px;padding:8px 14px;border-bottom:1px solid #31505e;background:linear-gradient(180deg,#15252e,#0b161d);box-shadow:0 10px 30px #0009}.startgame-brand{font:900 14px/1.1 var(--font-display);letter-spacing:.08em}.startgame-brand small{display:block;margin-top:4px;color:#71e9dc;font:700 8px/1 var(--font-mono)}.startgame-topbar .spacer{flex:1}.startgame-pill{padding:7px 10px;border:1px solid #ffffff20;border-radius:9px;background:#ffffff08;color:#bcd1d8;font:700 10px/1.2 var(--font-mono)}.startgame-world-viewport{height:calc(100vh - 58px);display:grid;place-items:center;overflow:hidden;background:#071018}
@@ -895,6 +904,7 @@ body.twoD-player-mode #app .twoD-work-drawer,body.twoD-player-mode #app .toasts,
 .scene-bootstrap-stage{position:relative;width:min(100vw,calc((100vh - 58px)*1.77778));aspect-ratio:16/9;background:linear-gradient(#697160 0 87%,#354047 87%);overflow:hidden;cursor:crosshair}.scene-bootstrap-grid{position:absolute;z-index:1;left:5%;right:5%;top:4%;bottom:17%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(4,minmax(0,1fr));column-gap:3%;row-gap:3.2%;margin:0}.scene-slot{position:relative;min-width:0;min-height:0;border:1.5px dashed #e5eadb66;border-radius:9px;background:#d5cbb00a;color:#eaf0e4;overflow:hidden}.scene-slot-label{position:absolute;left:6px;top:5px;padding:3px 5px;border-radius:5px;background:#10181dcc;font:900 7px/1 var(--font-mono)}.scene-slot.a1{border-style:solid;border-color:#ffb457;background:radial-gradient(circle at 45% 45%,#c9633036,transparent 45%),linear-gradient(145deg,#5d6252,#464b3f);box-shadow:inset 0 0 0 2px #ffb45716}.scene-incident-entry{position:absolute;z-index:5;left:17%;right:17%;top:16%;bottom:15%;display:grid;place-content:center;padding:6px;border:1px solid transparent;border-radius:10px;background:transparent;color:#fff;text-align:center;cursor:pointer}.scene-incident-entry:hover{border-color:#ffd18f;background:#00000018}.incident-title .incident-icon{display:block;font-size:24px;filter:drop-shadow(0 4px 3px #0008)}.incident-title b{display:block;margin-top:3px;font:900 10px/1.15 var(--font-display)}.incident-title small{display:block;margin-top:3px;color:#ffe1bc;font:700 6px/1.3 var(--font-mono)}.scene-road{position:absolute;z-index:2;left:0;right:0;bottom:0;height:11%;border-top:4px solid #b7ad83;background:#303b42}.scene-road::after{content:"";position:absolute;left:0;right:0;top:48%;height:3px;background:repeating-linear-gradient(90deg,#f4e29c 0 40px,transparent 40px 72px)}.scene-als-arrived{position:absolute;z-index:4;left:2.5%;bottom:1.3%;height:8%;width:auto;transform:rotate(90deg);filter:drop-shadow(0 7px 5px #000c)}.scene-start-note{position:absolute;z-index:5;right:1%;bottom:1%;max-width:29%;padding:6px 8px;border:1px solid #ffffff2c;border-radius:8px;background:#07131bea;color:#dbe9ed;font-size:7px;line-height:1.35;pointer-events:none}
 .incident-binocular-animation{position:absolute;z-index:35;left:16%;top:22%;width:7%;min-width:54px;pointer-events:none;animation:incidentObserver 1.45s ease-in-out both}.incident-binocular-animation img{display:block;width:100%;height:auto;filter:drop-shadow(0 7px 5px #000b)}.incident-binocular-animation span{position:absolute;left:56%;top:7%;font-size:28px;filter:drop-shadow(0 3px 2px #000b);animation:raiseBinocular 1.45s ease-in-out both}.incident-binocular-animation b{position:absolute;left:50%;top:102%;transform:translateX(-50%);padding:4px 7px;border-radius:6px;background:#07131aed;color:#fff;font:800 7px/1 var(--font-mono);white-space:nowrap}@keyframes incidentObserver{0%{opacity:0;transform:translate(0,20px) scale(.94)}22%,82%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(0,-3px) scale(1)}}@keyframes raiseBinocular{0%,22%{opacity:0;transform:translate(-9px,20px) rotate(-18deg)}44%,82%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0}}
 .start-world-players{position:absolute;inset:0;z-index:14;pointer-events:none}.start-world-player{--facing-angle:0deg;position:absolute;display:grid;justify-items:center;width:3%;min-width:24px;max-width:46px;transform:translate(-50%,-78%);transition-property:left,top;transition-timing-function:linear;pointer-events:none}.start-world-player.remote{pointer-events:auto;cursor:pointer}.start-world-player.remote:hover img{filter:drop-shadow(0 0 8px #63eadb) drop-shadow(0 5px 4px #000b)}.start-world-player.remote::after{content:"🎁";position:absolute;right:-15px;top:-16px;display:none;width:24px;height:24px;place-items:center;border:1px solid #6cebd9;border-radius:50%;background:#07131aee;font-size:13px}.start-world-player.remote:hover::after{display:grid}.start-world-player img{width:100%;height:auto;max-height:64px;object-fit:contain;transform:rotate(var(--facing-angle));transform-origin:50% 50%;transition:transform .14s ease-out;will-change:transform;filter:drop-shadow(0 5px 4px #000b)}.start-world-player b{margin-top:-4px;padding:3px 5px;border:1px solid #ffffff2a;border-radius:5px;background:#07131aea;color:#fff;font:800 7px/1 var(--font-mono);white-space:nowrap}.start-world-player.me img{filter:drop-shadow(0 0 5px #63eadb) drop-shadow(0 5px 4px #000b)}
+.start-world-player.zone-head img{animation:zoneHeadGlow 1.35s ease-in-out infinite!important}.start-world-player.zone-head b{border-color:#ffe36f;background:#322b0deb;color:#fff4b0;box-shadow:0 0 12px #ffd84d88}.start-world-player.zone-head::before{content:"HEAD";position:absolute;left:50%;top:-17px;transform:translateX(-50%);padding:3px 5px;border:1px solid #ffe36f;border-radius:999px;background:#30270eea;color:#fff4a8;font:1000 6px/1 var(--font-mono);letter-spacing:.08em;box-shadow:0 0 13px #ffd84d88}@keyframes zoneHeadGlow{0%,100%{filter:drop-shadow(0 0 5px #ffe56b) drop-shadow(0 5px 4px #000b)}50%{filter:drop-shadow(0 0 15px #fff17c) drop-shadow(0 0 7px #ffbd2e) drop-shadow(0 5px 4px #000b)}}
 .startgame-bag-dock{position:fixed;z-index:1810;left:12px;bottom:12px;display:flex;align-items:center;gap:8px;padding:5px 10px 5px 5px;border:1px solid #77f0b0;border-radius:999px;background:#07131af7;color:#fff;box-shadow:0 10px 30px #000a,0 0 22px #4fb26870;cursor:pointer}.startgame-bag-gauge{--bag-fill:0deg;position:relative;display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:conic-gradient(#51d483 var(--bag-fill),#26333a 0)}.startgame-bag-gauge::before{content:"";position:absolute;inset:5px;border-radius:50%;background:#0d171d}.startgame-bag-gauge span{position:relative;font-size:22px}.startgame-bag-dock b{font:900 12px/1 var(--font-mono)}.startgame-bag-list{display:grid;gap:7px;padding:14px}.startgame-bag-row{display:grid;grid-template-columns:54px 1fr auto;align-items:center;gap:10px;padding:8px;border:1px solid #ffffff18;border-radius:9px;background:#ffffff06}.startgame-bag-row img{width:50px;height:50px;object-fit:contain}.startgame-bag-row small{color:#8fefdf;font:700 9px/1.3 var(--font-mono)}
 .first-arrival-overlay{height:100vh;display:grid;place-items:center;padding:22px;background:radial-gradient(circle at 50% 25%,#1b3945,#071018 65%)}.first-arrival-card{width:min(720px,100%);padding:22px;border:1px solid #68e9d956;border-radius:18px;background:#0d1a22e8;box-shadow:0 30px 100px #000d;text-align:center}.first-arrival-road{position:relative;height:150px;margin:16px 0;overflow:hidden;border-radius:12px;background:linear-gradient(#3b4b52 0 68%,#263239 68%);border:1px solid #ffffff1c}.first-arrival-road::after{content:"";position:absolute;left:0;right:0;bottom:25%;height:4px;background:repeating-linear-gradient(90deg,#f6df91 0 42px,transparent 42px 74px)}.first-arrival-ambulance{position:absolute;z-index:2;left:-150px;bottom:14%;height:72px;width:auto;transform:rotate(90deg);animation:firstAlsDrive 6.5s cubic-bezier(.18,.72,.22,1) forwards}.first-arrival-progress{height:8px;border-radius:99px;background:#26333c;overflow:hidden}.first-arrival-progress span{display:block;height:100%;background:linear-gradient(90deg,#48d998,#62e7da);animation:firstArrivalFill 6.5s linear forwards}@keyframes firstAlsDrive{0%{left:-150px;transform:rotate(90deg)}78%,100%{left:calc(50% - 36px);transform:rotate(90deg)}}@keyframes firstArrivalFill{from{width:0}to{width:100%}}
 .gm-start-setup{border-color:#66eadb55;background:linear-gradient(135deg,#66eadb0e,#111922 58%)}.scenario-grid{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:8px;margin-top:12px}.scenario-choice{min-height:84px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#0d151d;color:var(--ink);cursor:pointer;text-align:left}.scenario-choice:hover{border-color:#67eada}.scenario-choice.active{border-color:#67eada;background:#67eada17;box-shadow:inset 0 0 0 1px #67eada33}.scenario-choice .icon{display:block;font-size:24px}.scenario-choice b{display:block;margin-top:6px;font-size:10px}.first-team-grid{display:grid;grid-template-columns:repeat(3,minmax(160px,1fr));gap:9px;margin-top:12px}.first-team-slot{padding:10px;border:1px solid var(--line-soft);border-radius:9px;background:#0c141c}.commander-start-fleet{margin-bottom:14px;border-color:#a78bfa55}.commander-vehicle-card{display:grid;grid-template-columns:minmax(110px,160px) 1fr auto;align-items:center;gap:12px;padding:10px;border-top:1px solid var(--line-soft)}.commander-vehicle-card:first-of-type{border-top:0}.commander-vehicle-card img{width:120px;height:58px;object-fit:contain;filter:drop-shadow(0 5px 4px #0008)}
@@ -942,14 +952,16 @@ body.twoD-player-mode #app .twoD-work-drawer,body.twoD-player-mode #app .toasts,
 </head>
 <body>
 <div id="app"></div>
-<div id="twoDPlayerHost" class="hidden"><iframe id="twoDPlayerFrame" title="MCI 2D Multiplayer World"></iframe></div>
+<div id="twoDPlayerHost" class="hidden"><iframe id="twoDPlayerFrame" title="MCI 2D Multiplayer World"></iframe><div id="vehicleCapacityHud" class="vehicle-capacity-hud hidden" aria-label="ความจุรถใน Loading และ Parking"></div></div>
 <div id="zoneTransitionHost" class="zone-transition-host" aria-hidden="true"><div class="zone-transition-card"><span aria-hidden="true">⛺</span><div><b id="zoneTransitionLabel">กำลังเปลี่ยนพื้นที่…</b><small>FIELD MOVEMENT</small></div></div></div>
 <div id="sceneViewerHost" class="hidden">
   <div class="sv-head"><span>🗺️ Scene Map</span><button type="button" class="sv-toggle" id="sceneViewerToggle" title="ย่อ/ขยาย">—</button></div>
   <div id="sceneViewerMap"></div>
 </div>
 <div id="communicationHost" class="hidden"></div>
+<button type="button" id="playerHowToDock" class="player-howto-dock hidden" data-howto-act="open" title="วิธีเล่นประจำ Zone"><span class="howto-q">?</span><span class="howto-label">HOW TO PLAY</span></button>
 <div id="howToPlayHost" class="hidden"></div>
+<div id="clockPauseOverlay" class="clock-pause-overlay hidden" aria-live="polite"><div class="clock-pause-card"><div class="clock-pause-icon">⏸</div><b>หยุดเวลา</b><small>GM หยุดเวลาเกมชั่วคราว · กรุณารอเริ่มนับเวลาต่อ</small></div></div>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -2039,7 +2051,7 @@ const DEFAULT_VEHICLES = [
 ].map(function(v,i){const hospital='Hospital '+String.fromCharCode(65+(i%3));return Object.assign({baseHospital:hospital,currentHospital:hospital,busyUntilElapsed:0,busyHospital:null,deploymentState:'RESERVE',workflowState:'RESERVE',originHospital:null,parkingSlot:null,loadingQueuePos:null,loadingRequestId:null,animationStartMs:null,animationDurationMs:null,start:{dispatchStatus:'PARKED',crew:[],readyBy:{},supplies:{},manifestLocked:false,calledAtMs:null,roadEnteredAtMs:null,calledBy:null,dispatchStartedAtMs:null,dispatchDurationMs:6500,arrivedAtMs:null,firstResponse:false}},v);});
 
 const FIXED_TRANSIT_SPEEDS={walkKmh:4,carryKmh:3};
-const DEFAULT_GC = {status:'NOT_STARTED', startTime:null, startedBy:null, endedElapsed:null, endedBy:null, resetVersion:0, debriefActive:false, debriefStartedAt:null, debriefStartedBy:null, archiveId:null,archiveName:null,archivedAt:null,participants:{},vehicleRequests:[],equipmentRequests:[],operationsLog:[],resourceBaseline:null,zoneResourceBaseline:null,resourceConfigVersion:4,preGameSettingsVersion:2,gameMode:'RESIDENT',hospitalStartScene:true,allowPlayerTentMove:true,supplyWithVehicle:true,patientTargetCount:10,transportMode:'SPLIT',maxGameMin:60, fastTreatment:false, allowHospitalTreatment:false, externVehiclesReadyAtStart:false,scenarioId:null,scenarioSelectedAt:null,scenarioSelectedBy:null,firstTeam:{firstResponder:null},firstVehicleId:null,startFlowVersion:4,capacity:{RED:2,YELLOW:2,GREEN:2},tentBuildDurations:{PRIMARY:10,SECONDARY:10,TX_RED:12,TX_YELLOW:12,TX_GREEN:12,PARKING:8,LOADING:8},transitSpeeds:FIXED_TRANSIT_SPEEDS, mapSettings:{useMap:true, distSecondary:true, distTreatment:true, distTransfer:true}};
+const DEFAULT_GC = {status:'NOT_STARTED', startTime:null, startedBy:null, endedElapsed:null, endedBy:null, clockPaused:false,clockPausedAt:null,clockPausedElapsed:null,resetVersion:0, debriefActive:false, debriefStartedAt:null, debriefStartedBy:null, archiveId:null,archiveName:null,archivedAt:null,participants:{},vehicleRequests:[],equipmentRequests:[],operationsLog:[],resourceBaseline:null,zoneResourceBaseline:null,resourceConfigVersion:4,preGameSettingsVersion:2,gameMode:'RESIDENT',hospitalStartScene:true,allowPlayerTentMove:true,supplyWithVehicle:true,patientTargetCount:10,transportMode:'SPLIT',maxGameMin:60, fastTreatment:false, allowHospitalTreatment:false, externVehiclesReadyAtStart:false,scenarioId:null,scenarioSelectedAt:null,scenarioSelectedBy:null,firstTeam:{firstResponder:null},firstVehicleId:null,startFlowVersion:4,capacity:{RED:2,YELLOW:2,GREEN:2},tentBuildDurations:{PRIMARY:10,SECONDARY:10,TX_RED:12,TX_YELLOW:12,TX_GREEN:12,PARKING:8,LOADING:8},transitSpeeds:FIXED_TRANSIT_SPEEDS, mapSettings:{useMap:true, distSecondary:true, distTreatment:true, distTransfer:true}};
 
 /* Round 2 pre-game settings are deliberately data-driven: adding another
    role mode later only requires another entry here, not a new settings UI. */
@@ -2058,6 +2070,9 @@ function normalizeGameControl(raw){
   gc.supplyWithVehicle=gc.supplyWithVehicle!==false;
   gc.patientTargetCount=Math.max(1,Math.min(40,Math.floor(Number(gc.patientTargetCount)||10)));
   gc.externVehiclesReadyAtStart=gc.hospitalStartScene?false:!!gc.externVehiclesReadyAtStart;
+  gc.clockPaused=gc.status==='RUNNING'&&!!gc.clockPaused;
+  gc.clockPausedAt=gc.clockPaused&&Number.isFinite(Number(gc.clockPausedAt))?Number(gc.clockPausedAt):null;
+  gc.clockPausedElapsed=gc.clockPaused&&Number.isFinite(Number(gc.clockPausedElapsed))?Math.max(0,Number(gc.clockPausedElapsed)):null;
   // Gameplay speed is intentionally fixed behind the scenes in v2.2.
   gc.transitSpeeds=Object.assign({},FIXED_TRANSIT_SPEEDS);
   gc.mapSettings=Object.assign({},DEFAULT_GC.mapSettings,gc.mapSettings||{});
@@ -3007,8 +3022,12 @@ function resolveTransits(patients, elapsed){
 function elapsedMinutes(gc){
   if(!gc || gc.status==='NOT_STARTED') return 0;
   if(gc.status==='ENDED') return gc.endedElapsed || 0;
+  if(gc.clockPaused){
+    if(Number.isFinite(Number(gc.clockPausedElapsed)))return Math.max(0,Number(gc.clockPausedElapsed));
+    if(gc.startTime&&gc.clockPausedAt)return Math.max(0,(Number(gc.clockPausedAt)-Number(gc.startTime))/60000);
+  }
   if(!gc.startTime) return 0;
-  return (Date.now()-gc.startTime)/60000;
+  return Math.max(0,(sharedNowMs()-gc.startTime)/60000);
 }
 
 function txSlotStatus(slot, elapsed){
@@ -4827,6 +4846,16 @@ let communicationStructureSnapshot='';
 function communicationUiEligible(){
   return !!(STATE.ready&&STATE.me.name&&STATE.me.station&&(STATE.me.station==='GM'||STATE.me.station==='COMMANDER'||communicationZoneForStation(STATE.me.station))&&!(STATE.gc.status==='ENDED'&&STATE.gc.debriefActive)&&!(STATE.me.station==='GM'&&STATE.gmTab==='archives'&&STATE.selectedArchive));
 }
+function communicationHeadNames(){
+  const names=[];communicationZones().forEach(function(zone){const head=communicationEffectiveHead(zone);if(head&&head.name&&names.indexOf(head.name)<0)names.push(head.name);});return names;
+}
+function playerIsZoneHead(name,station){
+  const zone=communicationZoneForStation(station),head=zone&&communicationEffectiveHead(zone);return !!(head&&head.name===name);
+}
+function collapseCommunicationPanel(){
+  const ui=STATE.ui&&STATE.ui.communication;if(!ui||!ui.open)return false;
+  ui.open=false;ui.composerMode=null;ui.notice='';saveLocalSession();renderCommunicationUI(true);return true;
+}
 function communicationActiveZone(){
   const ui=STATE.ui.communication;let active=ui.activeZone;
   if(STATE.me.station!=='GM'&&STATE.me.station!=='COMMANDER')active=communicationZoneForStation(STATE.me.station);
@@ -4887,7 +4916,7 @@ function renderCommunicationUI(force){
   const oldMessages=host.querySelector('#commMessages'),nearBottom=!oldMessages||oldMessages.scrollHeight-oldMessages.scrollTop-oldMessages.clientHeight<70;
   if(open)markCommunicationRead(active);
   const total=communicationTotalUnread();updateCommanderCommunicationBadgesOnly();
-  const launch='<button class="comm-launch" data-comm-act="toggleChat"><span>📻</span><span>COMMAND</span>'+communicationUnreadBadge(total)+(total.count&&total.kind!=='normal'?'<span class="comm-signal '+(total.kind==='urgent'?'urgent':'')+'"></span>':'')+'</button>';
+  const launch='<button class="comm-launch" data-comm-act="toggleChat" aria-label="เปิดห้องวอ" title="ห้องวอประจำ Zone"><span class="comm-radio-icon"><img class="comm-radio-asset" src="assets/props/handheld_radio.png" alt=""></span><span class="comm-radio-label">วอ</span>'+communicationUnreadBadge(total)+(total.count&&total.kind!=='normal'?'<span class="comm-signal '+(total.kind==='urgent'?'urgent':'')+'"></span>':'')+'</button>';
   let panel='';
   if(open){
     const multi=STATE.me.station==='GM'||STATE.me.station==='COMMANDER',viewClass=STATE.me.station==='GM'?'monitor-view':STATE.me.station==='COMMANDER'?'command-view':'';
@@ -5273,7 +5302,7 @@ async function resolveTreatmentWalkOuts(elapsed){
   if(result.committed){STATE.patients=result.patients;return true;}return false;
 }
 async function runDerivedStateMaintenance(){
-  if(derivedBusy||!STATE.me.name||STATE.gc.status==='ENDED')return;
+  if(derivedBusy||!STATE.me.name||STATE.gc.status==='ENDED'||STATE.gc.clockPaused)return;
   derivedBusy=true;
   try{
     await resolveFieldZoneLifecycle();
@@ -5331,10 +5360,18 @@ function backgroundRender(){
   render(false);
 }
 function updateLiveTimersOnly(){
+  updateClockPauseOverlay();
   const el = document.getElementById('liveTimer');
   const archived=STATE.me&&STATE.me.station==='GM'&&STATE.gmTab==='archives'&&STATE.selectedArchive,gc=archived?(STATE.selectedArchive.gc||DEFAULT_GC):STATE.gc;
   if(el) el.textContent = gc.status==='NOT_STARTED' ? '--:--' : fmtClock(elapsedMinutes(gc));
   updateDynamicPhysiologyDom();
+}
+function updateClockPauseOverlay(){
+  const overlay=document.getElementById('clockPauseOverlay');if(!overlay)return;
+  const show=!!(STATE.ready&&STATE.me&&STATE.me.name&&STATE.me.station!=='GM'&&STATE.gc&&STATE.gc.status==='RUNNING'&&STATE.gc.clockPaused);
+  if(show&&typeof HOWTO_STATE!=='undefined'&&HOWTO_STATE.open)closeHowTo();
+  overlay.classList.toggle('hidden',!show);overlay.setAttribute('aria-hidden',show?'false':'true');
+  document.body.classList.toggle('game-clock-paused',show);
 }
 function updateDynamicPhysiologyDom(){
   if(STATE.archiveRenderMode)return;const elapsed=elapsedMinutes(STATE.gc);
@@ -5681,7 +5718,7 @@ async function gmStartGame(){
     const oldGc=normalizeGameControl(root[KEYS.gc]||STATE.gc),roster=Object.assign({},root[KEYS.roster]||{});let vehicles=(root[KEYS.vehicles]||STATE.vehicles).map(function(v){return Object.assign({},v,{start:normalizedVehicleStart(v)});});if(oldGc.status==='RUNNING'){fail='เกมเริ่มไปแล้ว';return null;}if(!sceneReadyFor(oldGc,root[KEYS.scene]||STATE.scene)){fail='ยังไม่ได้เผยแพร่หรือข้าม Scene Setup';return null;}if(!startSetupReady(oldGc,roster)){fail='Scene, First Responder หรือ Command ไม่ครบ';return null;}if(hospitalStartEnabled(oldGc)&&!startDeploymentReady(oldGc,vehicles,roster)){fail='First Responder พร้อม BLS ยังไม่ถึง Scene';return null;}
     const cases=normalizeCases(root[KEYS.cases]||STATE.cases),elapsed=0,firstId=oldGc.firstVehicleId,field=hospitalStartEnabled(oldGc)?normalizeFieldZones(root[KEYS.fieldZones],root[KEYS.resources]||STATE.resources):provisionDirectStartFieldZones(root[KEYS.fieldZones],root[KEYS.resources]||STATE.resources),primaryTents=activeFieldTents('PRIMARY',field);root[KEYS.fieldZones]=field;
     if(!primaryTents.length){fail='ยังไม่มีเต็นท์ Primary Triage ที่พร้อมใช้งาน';return null;}
-    const gc=Object.assign({},oldGc,{status:'RUNNING',startTime:now,startedBy:STATE.me.name||'GM',endedElapsed:null,endedBy:null,debriefActive:false,debriefStartedAt:null,debriefStartedBy:null,archiveId:null,archiveName:null,archivedAt:null,participants:participantSeedFromRoster(roster),vehicleRequests:[],equipmentRequests:[],operationsLog:(oldGc.operationsLog||[]).concat([{t:0,type:(hospitalStartEnabled(oldGc)?'GAME_START_AFTER_FIRST_RESPONDER '+firstId:'GAME_START_DIRECT_TENT_ASSIGNMENT')+' · '+oldGc.scenarioId,by:STATE.me.name||'GM',requestId:requestId}]),resourceBaseline:startupBaseline,startFlowVersion:4});
+    const gc=Object.assign({},oldGc,{status:'RUNNING',startTime:now,startedBy:STATE.me.name||'GM',endedElapsed:null,endedBy:null,clockPaused:false,clockPausedAt:null,clockPausedElapsed:null,debriefActive:false,debriefStartedAt:null,debriefStartedBy:null,archiveId:null,archiveName:null,archivedAt:null,participants:participantSeedFromRoster(roster),vehicleRequests:[],equipmentRequests:[],operationsLog:(oldGc.operationsLog||[]).concat([{t:0,type:(hospitalStartEnabled(oldGc)?'GAME_START_AFTER_FIRST_RESPONDER '+firstId:'GAME_START_DIRECT_TENT_ASSIGNMENT')+' · '+oldGc.scenarioId,by:STATE.me.name||'GM',requestId:requestId}]),resourceBaseline:startupBaseline,startFlowVersion:4});
     if(!hospitalStartEnabled(oldGc)&&oldGc.externVehiclesReadyAtStart){vehicles=vehicles.map(function(v,i){return Object.assign({},v,{currentHospital:null,deploymentState:'PARKING',workflowState:'READY_PARKING',originHospital:'PRE-GAME READY',busyUntilElapsed:0,parkingSlot:i%12,parkingLanePos:null,loadingQueuePos:null,start:Object.assign({},normalizedVehicleStart(v),{dispatchStatus:'SCENE',crew:[],readyBy:{},manifestLocked:true,arrivedAtMs:now})});});}
     const queued=(Array.isArray(root[KEYS.patients])?root[KEYS.patients]:[]).filter(function(p){return p.stage==='PRIMARY'&&!p.primary;}),fallbackPoints=shuffledPrimaryScenePoints(queued.length),usedPoints={},patients=queued.length?queued.map(function(p,i){const old=p.primaryScenePos,oldKey=old&&Number.isFinite(Number(old.x))&&Number.isFinite(Number(old.y))?Number(old.x)+','+Number(old.y):'',q=oldKey&&!usedPoints[oldKey]?[Number(old.x),Number(old.y)]:(fallbackPoints.find(function(point){return!usedPoints[point[0]+','+point[1]];})||PRIMARY_SCENE_POINTS[i%PRIMARY_SCENE_POINTS.length]),key=q[0]+','+q[1],pose=effectiveCanWalk(p)==='yes'?'':'lying';usedPoints[key]=true;return Object.assign({},p,{tentId:p.tentId||primaryTents[i%primaryTents.length].id,primaryScenePos:{x:q[0],y:q[1],pose:pose}});}):scenarioPatientsForStart(cases,oldGc.scenarioId,elapsed,STATE.me.name||'GM',primaryTents);
     root[KEYS.gc]=gc;root[KEYS.roster]=roster;root[KEYS.vehicles]=vehicles;root[KEYS.patients]=patients;root[KEYS.locks]={};if(!hadBaseline)root[KEYS.resources]=startupBaseline;return root;
@@ -5691,9 +5728,60 @@ async function gmStartGame(){
 }
 async function gmEndGame(){
   const elapsed = elapsedMinutes(STATE.gc);
-  const gc = Object.assign({}, STATE.gc, {status:'ENDED', endedElapsed:elapsed, endedBy:STATE.me.name||'GM', debriefActive:true, debriefStartedAt:Date.now(), debriefStartedBy:STATE.me.name||'GM'});
+  const gc = Object.assign({}, STATE.gc, {status:'ENDED', endedElapsed:elapsed, endedBy:STATE.me.name||'GM',clockPaused:false,clockPausedAt:null,clockPausedElapsed:null,debriefActive:true, debriefStartedAt:Date.now(), debriefStartedBy:STATE.me.name||'GM'});
   await kvSet(KEYS.gc, gc); STATE.gc=gc; STATE.gmTab='debrief';saveLocalSession();render(true);
   toast('จบเกมแล้ว','ok');
+}
+
+/* Pause is a game-clock operation, not an end-game state. Elapsed-based
+   physiology, treatment, transit and hospital timers freeze automatically.
+   Active millisecond animations are shifted on resume so they continue from
+   the same visible frame instead of jumping forward by the wall-clock pause. */
+function shiftActiveVehicleTimer(value,startKey,durationKey,pauseAt,delta){
+  const start=Number(value&&value[startKey]),duration=Number(value&&value[durationKey]);
+  if(Number.isFinite(start)&&start>0&&Number.isFinite(duration)&&duration>=0&&start+duration>=pauseAt)value[startKey]=start+delta;
+}
+function shiftOperationalTimersForResume(root,pauseAt,delta){
+  if(!(delta>0))return;
+  root[KEYS.vehicles]=(root[KEYS.vehicles]||[]).map(function(raw){
+    const v=Object.assign({},raw),start=Object.assign({},v.start||{});
+    [['animationStartMs','animationDurationMs'],['parkingEntryStartMs','parkingEntryDurationMs'],['parkingExitStartMs','parkingExitDurationMs'],['loadingEntryStartMs','loadingEntryDurationMs'],['bayAnimationStartMs','bayAnimationDurationMs'],['loadingDepartureStartMs','loadingDepartureDurationMs'],['queueShiftStartMs','queueShiftDurationMs']].forEach(function(pair){shiftActiveVehicleTimer(v,pair[0],pair[1],pauseAt,delta);});
+    if(Number(start.arrivedAtMs)>=pauseAt)start.arrivedAtMs=Number(start.arrivedAtMs)+delta;
+    if(Number(start.dispatchStartedAtMs)>0&&Number(start.dispatchStartedAtMs)+Number(start.dispatchDurationMs||0)>=pauseAt)start.dispatchStartedAtMs=Number(start.dispatchStartedAtMs)+delta;
+    if(Number(v.hospitalReturnedAtMs)>0&&Number(v.hospitalReturnedAtMs)+Number(start.dispatchDurationMs||6500)>=pauseAt)v.hospitalReturnedAtMs=Number(v.hospitalReturnedAtMs)+delta;
+    v.start=start;return v;
+  });
+  root[KEYS.patients]=(root[KEYS.patients]||[]).map(function(raw){const p=Object.assign({},raw);if(Number(p.treatmentWalkOutFallbackAtMs)>=pauseAt){p.treatmentWalkOutStartedAtMs=Number(p.treatmentWalkOutStartedAtMs||pauseAt)+delta;p.treatmentWalkOutFallbackAtMs=Number(p.treatmentWalkOutFallbackAtMs)+delta;}return p;});
+  if(root[KEYS.fieldZones]&&root[KEYS.fieldZones].instances){const field=Object.assign({},root[KEYS.fieldZones]),instances=Object.assign({},field.instances);Object.keys(instances).forEach(function(id){const t=Object.assign({},instances[id]);if(t.status==='BUILDING'&&Number(t.phaseEndsAtMs)>=pauseAt){t.phaseStartedAtMs=Number(t.phaseStartedAtMs||pauseAt)+delta;t.phaseEndsAtMs=Number(t.phaseEndsAtMs)+delta;}instances[id]=t;});field.instances=instances;root[KEYS.fieldZones]=field;}
+  if(root[KEYS.logisticsJobs]&&root[KEYS.logisticsJobs].jobs){const logistics=Object.assign({},root[KEYS.logisticsJobs]),jobs=Object.assign({},logistics.jobs);Object.keys(jobs).forEach(function(id){const j=Object.assign({},jobs[id]);if(j.status==='MOVING'&&Number(j.completeAtMs)>=pauseAt){['startedAtMs','moveStartedAtMs','completeAtMs'].forEach(function(key){if(Number(j[key])>0)j[key]=Number(j[key])+delta;});}jobs[id]=j;});logistics.jobs=jobs;root[KEYS.logisticsJobs]=logistics;}
+  if(root[KEYS.porters]&&root[KEYS.porters].jobs){const porters=Object.assign({},root[KEYS.porters]),jobs=Object.assign({},porters.jobs);Object.keys(jobs).forEach(function(id){const j=Object.assign({},jobs[id]);if(j.status==='assigned'){['assignedAtMs','startedAtMs','createdAtMs'].forEach(function(key){if(Number(j[key])>0)j[key]=Number(j[key])+delta;});}jobs[id]=j;});porters.jobs=jobs;root[KEYS.porters]=porters;}
+}
+async function gmToggleClockPause(){
+  if(STATE.me.station!=='GM'){toast('เฉพาะ GM เท่านั้นที่หยุดเวลาได้','err');return;}
+  const wantPause=!STATE.gc.clockPaused;let fail='',pausedNow=wantPause;
+  const result=await kvRootTransaction(function(root){
+    const now=sharedNowMs(),gc=normalizeGameControl(root[KEYS.gc]||STATE.gc);
+    if(gc.status!=='RUNNING'){fail='หยุดเวลาได้เฉพาะขณะเกมกำลังดำเนินอยู่';return null;}
+    if(wantPause){
+      if(gc.clockPaused){fail='เวลาเกมถูกหยุดไว้แล้ว';return null;}
+      const elapsed=gc.startTime?Math.max(0,(now-Number(gc.startTime))/60000):0;
+      root[KEYS.gc]=Object.assign({},gc,{clockPaused:true,clockPausedAt:now,clockPausedElapsed:elapsed,operationsLog:(gc.operationsLog||[]).concat([{t:elapsed,type:'CLOCK_PAUSE',by:STATE.me.name||'GM'}])});
+    }else{
+      if(!gc.clockPaused){fail='เวลาเกมเริ่มนับต่ออยู่แล้ว';return null;}
+      const pauseAt=Number(gc.clockPausedAt)||now,delta=Math.max(0,now-pauseAt),elapsed=Number(gc.clockPausedElapsed)||0;
+      shiftOperationalTimersForResume(root,pauseAt,delta);
+      root[KEYS.gc]=Object.assign({},gc,{startTime:Number(gc.startTime||now)+delta,clockPaused:false,clockPausedAt:null,clockPausedElapsed:null,operationsLog:(gc.operationsLog||[]).concat([{t:elapsed,type:'CLOCK_RESUME',by:STATE.me.name||'GM'}])});
+    }
+    return root;
+  });
+  if(!result.committed){toast(fail||'เปลี่ยนสถานะเวลาไม่สำเร็จ','err');return;}
+  STATE.gc=normalizeGameControl(result.root[KEYS.gc]);
+  if(result.root[KEYS.vehicles])STATE.vehicles=result.root[KEYS.vehicles];
+  if(result.root[KEYS.patients])STATE.patients=result.root[KEYS.patients];
+  if(result.root[KEYS.fieldZones])STATE.fieldZones=normalizeFieldZones(result.root[KEYS.fieldZones],STATE.resources);
+  if(result.root[KEYS.logisticsJobs])STATE.logisticsJobs=normalizeLogisticsJobs(result.root[KEYS.logisticsJobs]);
+  if(result.root[KEYS.porters])STATE.porters=result.root[KEYS.porters];
+  STATE._snapshot=null;render(true);toast(pausedNow?'หยุดเวลาเกมแล้ว':'เริ่มนับเวลาต่อจากเวลาเดิมแล้ว','ok');
 }
 function cloneArchiveData(value){return JSON.parse(JSON.stringify(value));}
 function makeArchiveId(){return 'game_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}
@@ -6112,7 +6200,6 @@ async function primarySetField(id, field, value){
   await mutatePatients(function(patients){
     const p=patients.find(function(x){return normU(x.id)===normU(id);});
     if(!p)return null;
-    if(field==='primary'&&p.primary){toast('Primary Triage บันทึกแล้ว ไม่มีระบบ Reassessment','err');return null;}
     if(patientIsDead(p,elapsed)){toast('ผู้ป่วยเสียชีวิตแล้ว ไม่สามารถทำ Primary Triage เพิ่มได้','err');return null;}
     if(hasAnyTxInProgress(p,elapsed)){toast('ผู้ป่วยกำลังได้รับ Initial Treatment จึงยังทำ Primary Triage ไม่ได้','err');return null;}
     if(!triageHasFreeStaff('PRIMARY',patients,elapsed,STATE.roster)){toast('ไม่มี Staff ว่างใน Primary Triage','err');return null;}
@@ -6124,7 +6211,10 @@ async function primarySetField(id, field, value){
         if(!answer.valid){toast('คำนวณ Triage Sieve ไม่ได้: '+answer.error,'err');return x;}
         patch.primaryDecisionTime=elapsed;
         patch.primaryCorrect=answer.color;patch.primaryTriageSnapshot=snapshot;patch.primaryTriageAlgorithm='SIEVE_V4.1';
-        patch.events=(x.events||[]).concat([{t:elapsed,type:'PRIMARY_CLASSIFY '+value,by:STATE.me.name||'',correct:answer.color,algorithm:'SIEVE_V4.1',snapshot:snapshot,reason:answer.reason}]);
+        /* A colour change before transfer edits the same Primary decision. It is
+           not a reassessment and must not leave an accidental click in scoring. */
+        const priorEvents=(x.events||[]).filter(function(e){return !String(e&&e.type||'').startsWith('PRIMARY_CLASSIFY ');});
+        patch.events=priorEvents.concat([{t:elapsed,type:'PRIMARY_CLASSIFY '+value,by:STATE.me.name||'',correct:answer.color,algorithm:'SIEVE_V4.1',snapshot:snapshot,reason:answer.reason}]);
       }
       return Object.assign({},x,patch);
     });
@@ -6163,7 +6253,6 @@ async function secondarySetField(id, field, value){
   await mutatePatients(function(patients){
     const p=patients.find(function(x){return normU(x.id)===normU(id);});
     if(!p)return null;
-    if(field==='secondary'&&p.secondary){toast('Secondary Triage บันทึกแล้ว ไม่มีระบบ Reassessment','err');return null;}
     if(patientIsDead(p,elapsed)){toast('ผู้ป่วยเสียชีวิตแล้ว ไม่สามารถทำ Secondary Triage เพิ่มได้','err');return null;}
     if(hasAnyTxInProgress(p,elapsed)){toast('ผู้ป่วยกำลังได้รับ Initial Treatment จึงยังทำ Secondary Triage ไม่ได้','err');return null;}
     if(!triageHasFreeStaff('SECONDARY',patients,elapsed,STATE.roster)){toast('ไม่มี Staff ว่างใน Secondary Triage','err');return null;}
@@ -6175,7 +6264,10 @@ async function secondarySetField(id, field, value){
         if(!answer.valid){toast('คำนวณ Triage Sort ไม่ได้: '+answer.error,'err');return x;}
         patch.secondaryDecisionTime=elapsed;
         patch.secondaryCorrect=answer.color;patch.secondaryTriageSnapshot=snapshot;patch.secondaryTriageAlgorithm='SORT_V4.1';patch.secondaryTriageScore=answer.score;
-        patch.events=(x.events||[]).concat([{t:elapsed,type:'SECONDARY_CLASSIFY '+value,by:STATE.me.name||'',correct:answer.color,algorithm:'SORT_V4.1',snapshot:snapshot,score:answer.score,breakdown:answer.breakdown}]);
+        /* Like Primary, changing the colour before transfer edits the same
+           Secondary decision. Keep only the final click for scoring. */
+        const priorEvents=(x.events||[]).filter(function(e){return !String(e&&e.type||'').startsWith('SECONDARY_CLASSIFY ');});
+        patch.events=priorEvents.concat([{t:elapsed,type:'SECONDARY_CLASSIFY '+value,by:STATE.me.name||'',correct:answer.color,algorithm:'SORT_V4.1',snapshot:snapshot,score:answer.score,breakdown:answer.breakdown}]);
       }
       return Object.assign({},x,patch);
     });
@@ -6842,10 +6934,11 @@ async function txCancelItem(id,slotIndex){
     if(slot.location==='TX')nextResources[ri]=Object.assign({},resources[ri],{stock:Number(resources[ri].stock||0)+1});
     root[KEYS.patients]=nextPatients; root[KEYS.resources]=nextResources;
     committedPatients=nextPatients; committedResources=nextResources;
-    if(slot.carriedByClientId){
+    const refundClientId=slot.carriedByClientId||STATE.me.clientId;
+    if(refundClientId){
       const nextCarried=Object.assign({},carried);
-      nextCarried[slot.carriedByClientId]=Object.assign({},nextCarried[slot.carriedByClientId]||{});
-      nextCarried[slot.carriedByClientId][slot.item]=Number(nextCarried[slot.carriedByClientId][slot.item]||0)+1;
+      nextCarried[refundClientId]=Object.assign({},nextCarried[refundClientId]||{});
+      nextCarried[refundClientId][slot.item]=Number(nextCarried[refundClientId][slot.item]||0)+1;
       root[KEYS.carried]=nextCarried; committedCarried=nextCarried;
     }else{
       const refundZone=slot.resourceZone||treatmentZoneKey(slot.location,p);if(zoneResources[refundZone])zoneResources[refundZone][slot.item]=Number(zoneResources[refundZone][slot.item]||0)+1;root[KEYS.zoneResources]=zoneResources;committedZoneResources=zoneResources;
@@ -7324,6 +7417,7 @@ function renderSnapshotForCurrentView(){
   return JSON.stringify(Object.assign(base,scoped));
 }
 function render(force){
+  updateClockPauseOverlay();
   const onSceneTab = STATE.ready && STATE.me.station==='GM' && STATE.gmTab==='scene';
   if(onSceneTab && sceneMounted){ updateTwoDPlayerHost(); updateSceneViewerPanel(); renderCommunicationUI(); refreshHowToAfterRender(); return; }
 
@@ -7430,7 +7524,7 @@ function twoDPlayerPayload(){
   Object.keys(STATE.carried||{}).forEach(function(clientId){bagUsageByClient[clientId]=carriedInventoryUnits(STATE.carried[clientId],STATE.resources);});
   Object.keys((STATE.porters&&STATE.porters.jobs)||{}).forEach(function(k){const j=STATE.porters.jobs[k];if(j&&j.status!=='done')porterByPatient[j.patientId]=j;});
   vehicleRequests().forEach(function(r){if(r&&r.level==='LOADING_TO_PARKING'&&r.status==='PENDING'&&r.reservedVehicleId)loadingRequestByVehicle[r.reservedVehicleId]=r.id;});
-  return{name:STATE.me.name||'PLAYER',gender:STATE.me.gender||'MALE',clientId:STATE.me.clientId||null,station:STATE.me.station||null,status:STATE.gc.status,resetVersion:Number(STATE.gc.resetVersion||0),elapsed:elapsed,serverNowMs:nowMs,overviewPos:(STATE.ui.twoD&&STATE.ui.twoD.overviewPos)||null,carried:(STATE.carried&&STATE.carried[STATE.me.clientId])||{},bagCapacity:PLAYER_BAG_CAPACITY,resourceWeights:resourceWeights,bagUsageByClient:bagUsageByClient,
+  return{name:STATE.me.name||'PLAYER',gender:STATE.me.gender||'MALE',clientId:STATE.me.clientId||null,station:STATE.me.station||null,headNames:communicationHeadNames(),status:STATE.gc.status,resetVersion:Number(STATE.gc.resetVersion||0),elapsed:elapsed,serverNowMs:nowMs,overviewPos:(STATE.ui.twoD&&STATE.ui.twoD.overviewPos)||null,carried:(STATE.carried&&STATE.carried[STATE.me.clientId])||{},bagCapacity:PLAYER_BAG_CAPACITY,resourceWeights:resourceWeights,bagUsageByClient:bagUsageByClient,
     patients:patients.map(function(p){const c=dashboardPatientColor(p,elapsed),activeSlot=(p.tx||[]).find(function(s){return s&&txSlotStatus(s,elapsed)==='IN_PROGRESS';}),job=porterByPatient[normU(p.id)],remainMs=activeSlot?Math.max(0,((Number(activeSlot.startedAt||0)+Number(activeSlot.durationSec||0)/60)-elapsed)*60000):0,endMs=activeSlot?nowMs+remainMs:0,startMs=activeSlot?endMs-Number(activeSlot.durationSec||0)*1000:0;return{id:p.id,gender:caseGender(findCase(STATE.cases,p.id)||p),scene:twoDPatientScene(p),txColor:String(p.txZone||'').toLowerCase(),primary:String(p.primary||'').toLowerCase(),secondary:String(p.secondary||'').toLowerCase(),color:String(c||'gray').toLowerCase(),mobile:effectiveCanWalk(p)==='yes',dead:patientIsDead(p,elapsed),primaryScenePos:p.primaryScenePos||null,transferring:twoDPatientTransferring(p),treatmentWalkingOut:!!p.treatmentWalkOutStartedAtMs,holding:!!p.txHoldZone,holdColor:String(p.txHoldZone||'').toLowerCase(),txActiveItem:activeSlot?activeSlot.item:'',txActiveRemainSec:activeSlot?remainMs/1000:0,txActiveDurationSec:activeSlot?activeSlot.durationSec:0,txActiveStartMs:startMs,txActiveEndMs:endMs,porterJobId:job?job.id:'',porterJobStatus:job?job.status:'',porterJobToZone:job?job.toZone:'',boardedVehicle:p.boardedVehicle||'',boardedAtMs:Number(p.boardedAtMs||0)};}),
     vehicles:(STATE.vehicles||[]).map(function(v){const boarded=patients.filter(function(p){return p.stage==='TRANSFER'&&p.boardedVehicle===v.name&&p.boardedAtMs;}).map(function(p){return normU(p.id);});return{name:v.name,type:v.type,state:vehicleDeploymentState(v,elapsed),workflowState:vehicleWorkflowState(v,elapsed),parkingSlot:v.parkingSlot,parkingDepartureSlot:v.parkingDepartureSlot,parkingLanePos:v.parkingLanePos,loadingQueuePos:v.loadingQueuePos,previousQueuePos:v.previousQueuePos,queueFromPos:v.queueFromPos,queueShiftStartMs:Number(v.queueShiftStartMs||0),queueShiftDurationMs:Number(v.queueShiftDurationMs||0),loadingRequestId:v.loadingRequestId||loadingRequestByVehicle[v.name]||'',animationStartMs:Number(v.animationStartMs||0),animationDurationMs:Number(v.animationDurationMs||0),parkingEntryStartMs:Number(v.parkingEntryStartMs||0),parkingEntryDurationMs:Number(v.parkingEntryDurationMs||0),parkingExitStartMs:Number(v.parkingExitStartMs||0),parkingExitDurationMs:Number(v.parkingExitDurationMs||0),loadingEntryStartMs:Number(v.loadingEntryStartMs||0),loadingEntryDurationMs:Number(v.loadingEntryDurationMs||0),bayAnimationStartMs:Number(v.bayAnimationStartMs||0),bayAnimationDurationMs:Number(v.bayAnimationDurationMs||0),loadingDepartureStartMs:Number(v.loadingDepartureStartMs||0),loadingDepartureDurationMs:Number(v.loadingDepartureDurationMs||0),returnedFromLoading:!!v.returnedFromLoading,loadedPatientIds:vehicleWorkflowState(v,elapsed)==='HOSPITAL_TRIP'?(v.loadedPatientIds||boarded):boarded};}),
     vehicleRequests:vehicleRequests().filter(function(r){return ['PARKING_TO_COMMAND','LOADING_TO_PARKING'].indexOf(r.level)>-1&&r.status==='PENDING';}).map(function(r){return{id:r.id,requestId:r.requestId||r.id,level:r.level,type:r.type,status:r.status,requestedBy:r.requestedBy,requestedAt:r.requestedAt,requestedAtMs:r.requestedAtMs,reservedVehicleId:r.reservedVehicleId||''};}),
@@ -7447,6 +7541,7 @@ function patchTwoDFrameSource(source){
 #treatmentStage .bed.mciTreatmentWalkingOut{z-index:160!important;pointer-events:none!important;cursor:default!important}
 #treatmentStage .bed.mciTreatmentWalkingOut .bedLabel,#treatmentStage .bed.mciTreatmentWalkingOut .bedRing,#treatmentStage .bed.mciTreatmentWalkingOut .bedDeathMarker{opacity:0!important}
 .bagItemRow.bagReturnable{cursor:pointer;border-color:#62e5d466}.bagItemRow.bagReturnable:hover{background:#4fb26818;box-shadow:0 0 0 2px #62e5d422}.bagItemRow.bagReturnable .bagItemMeta small::after{content:" · กดเพื่อเดินไปคืนที่ตู้";color:#75dfd1}
+.doctor.zoneHeadDoctor{animation:mciZoneHeadGlow 1.35s ease-in-out infinite!important}@keyframes mciZoneHeadGlow{0%,100%{filter:drop-shadow(0 0 6px #ffe66f) drop-shadow(0 8px 5px #0008)}50%{filter:drop-shadow(0 0 17px #fff27f) drop-shadow(0 0 8px #ffbd2e) drop-shadow(0 8px 5px #0008)}}
 `;
   const morgueHelper=`
 function mciPatientDead(p){return !!(p&&(p.dead||p.color==='black'||p.status==='black'||p.status==='dead'))}
@@ -7517,13 +7612,27 @@ function collapseWindowsBeforeWalk(){
 }
 function peerEl(key,gender){const e=document.createElement('div');e.className='doctor remoteDoctor'+(String(gender||'').toUpperCase()==='FEMALE'?' femaleDoctor':'');e.dataset.client=key;e.innerHTML='<div class="head"></div><div class="hair"></div><div class="torso"></div><div class="legs"></div><div class="nameTag"></div>';e.style.transition='left .12s linear,top .12s linear';e.onclick=event=>{event.stopPropagation();walkToFriend(e.dataset.client)};return e}`;
   source=source.replace(oldPeer,newPeer);
+  source=source.replace("function names(){document.querySelectorAll('.doctor:not(.remoteDoctor)').forEach(d=>{d.classList.toggle('femaleDoctor',", "function names(){const isHead=(snap.headNames||[]).indexOf(snap.name)>-1;document.querySelectorAll('.doctor:not(.remoteDoctor)').forEach(d=>{d.classList.toggle('zoneHeadDoctor',isHead);d.classList.toggle('femaleDoctor',");
+  source=source.replace("e.classList.toggle('femaleDoctor',String(q.gender||'MALE').toUpperCase()==='FEMALE');e.dataset.peerName", "e.classList.toggle('zoneHeadDoctor',(snap.headNames||[]).indexOf(q.name)>-1);e.classList.toggle('femaleDoctor',String(q.gender||'MALE').toUpperCase()==='FEMALE');e.dataset.peerName");
+  source=source.replace('MCI 2D Complete Game v5.5 · Mobility + Cooperative Treatment','MCI 2D Complete Game v6.5 · Radio–Backpack Alignment');
+  source=source.replace("setInterval(()=>emit(false),80);", "document.addEventListener('click',()=>send('uiOpen',{}),true);setInterval(()=>emit(false),80);");
   return source;
 }
 function decodeTwoDFrameSource(){const raw=atob(TWO_D_FRAME_SOURCE_B64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);const source=new TextDecoder('utf-8').decode(bytes).replace(/\n\/\* Dynamic-zone v7: Holding was removed from the game model\. \*\/\n#secondaryStage \.secHold,#treatmentStage \.holdingArea\{display:none!important\}\n#treatmentStage \.tRoom:after\{content:"8 ACTIVE CARE BAYS • CAPACITY 8"!important\}\n/,'');return patchTwoDFrameSource(source)}
+function updateVehicleCapacityHud(show){
+  const hud=document.getElementById('vehicleCapacityHud');if(!hud)return;
+  const visible=!!(show&&['LOADING','PARKING'].indexOf(STATE.me.station)>-1);hud.classList.toggle('hidden',!visible);if(!visible)return;
+  if(!hud.dataset.ready){hud.dataset.ready='1';hud.innerHTML='<span class="vehicle-capacity-title">VEHICLE CAPACITY</span>'+[
+    ['ALS','นอน 1 · นั่ง 2'],['BLS','นอน 1 · นั่ง 2'],['BUS','นั่ง 10']
+  ].map(function(rule){return '<span class="vehicle-capacity-item">'+miniVehicleCapacityIcon(rule[0])+'<b>'+rule[0]+'</b><span>'+rule[1]+'</span></span>';}).join('');}
+}
+function updatePlayerHowToDock(){
+  const dock=document.getElementById('playerHowToDock');if(!dock)return;const ordinary=STATE.me.station!=='GM'&&STATE.me.station!=='COMMANDER',ended=STATE.gc&&STATE.gc.status==='ENDED';dock.classList.toggle('hidden',!(STATE.ready&&STATE.me.name&&ordinary&&!ended));
+}
 function updateTwoDPlayerHost(){
   const host=document.getElementById('twoDPlayerHost'),f=document.getElementById('twoDPlayerFrame');if(!host||!f)return;
   const playerStation=STATE.me.station!=='GM'&&STATE.me.station!=='COMMANDER',ended=STATE.gc&&STATE.gc.status==='ENDED',active=(STATE.ui.twoD&&STATE.ui.twoD.activeZone)||twoDZoneForStation(STATE.me.station),targetScene=active&&TWO_D_ZONES[active]?TWO_D_ZONES[active].scene:null,atScene=startPlayerLocation()==='SCENE',startWorld=currentStartWorldScene(),show=!!(STATE.ready&&STATE.me.name&&playerStation&&!ended&&atScene&&active&&targetScene);
-  host.classList.toggle('hidden',!show);document.body.classList.toggle('twoD-player-mode',show);
+  host.classList.toggle('hidden',!show);document.body.classList.toggle('twoD-player-mode',show);updateVehicleCapacityHud(show);updatePlayerHowToDock();
   if(!show){
     twoDLastSync='';twoDLastNavigateScene='';f.style.opacity='0';if(!startWorld){twoDPendingPosition=null;twoDLastPosition=null;if(twoDPositionTimer){clearTimeout(twoDPositionTimer);twoDPositionTimer=null;}if(!twoDNonPlayerPresenceCleared&&fbReady&&STATE.me.clientId){twoDNonPlayerPresenceCleared=true;fbDb.ref(PRESENCE_ROOT+'/'+KEYS.positions+'/'+STATE.me.clientId).remove().catch(()=>{});}}else{twoDNonPlayerPresenceCleared=false;updateStartWorldPlayers();}
     if(ended&&f.dataset.mounted){delete f.dataset.mounted;twoDFrameReady=false;f.srcdoc='';f.removeAttribute('srcdoc');f.src='about:blank';}
@@ -7605,7 +7714,7 @@ function updateStartWorldPlayers(){
   const now=Date.now(),wanted={},positions=STATE.positions||{};
   Object.keys(positions).forEach(function(clientId){const p=positions[clientId];if(!p||p.scene!==scene||now-Number(p.at||0)>45000)return;wanted[clientId]=p;});
   if(STATE.me.clientId){const live=wanted[STATE.me.clientId],pending=pendingHospitalVehicleExitPosition&&pendingHospitalVehicleExitPosition.scene===scene?pendingHospitalVehicleExitPosition:null,last=twoDLastPosition&&twoDLastPosition.scene===scene?twoDLastPosition:null;if(pending)wanted[STATE.me.clientId]=pending;else if(last&&(!live||Number(last.at||0)>=Number(live.at||0)))wanted[STATE.me.clientId]=last;else if(!live)wanted[STATE.me.clientId]=Object.assign({scene:scene,at:now,name:STATE.me.name,gender:STATE.me.gender},startWorldDefaultPosition(scene));}
-  Object.keys(wanted).forEach(function(clientId){const p=wanted[clientId],info=startWorldPlayerRecord(clientId,p),isMe=clientId===STATE.me.clientId;let el=Array.from(layer.children).find(function(node){return node.dataset.startClient===clientId;});if(!el){el=document.createElement('div');el.className='start-world-player'+(isMe?' me':' remote');el.dataset.startClient=clientId;const img=document.createElement('img'),label=document.createElement('b');img.alt='';el.appendChild(img);el.appendChild(label);layer.appendChild(el);}el.classList.toggle('me',isMe);el.classList.toggle('remote',!isMe);if(isMe){delete el.dataset.act;delete el.dataset.client;}else{el.dataset.act='startFriendOpen';el.dataset.client=clientId;el.title='กดเพื่อส่งอุปกรณ์ให้ '+info.name;}const img=el.querySelector('img'),label=el.querySelector('b'),x=Math.max(24,Math.min(START_WORLD_WIDTH-24,Number(p.x)||0)),y=Math.max(45,Math.min(START_WORLD_HEIGHT-30,Number(p.y)||0)),oldX=Number(el.dataset.x),oldY=Number(el.dataset.y),dist=Number.isFinite(oldX)?Math.hypot(x-oldX,y-oldY):0,duration=dist?Math.max(120,Math.min(2200,dist/300*1000)):0,facing=p.facing||'south',angle=startWorldFacingAngle(facing),animatingLocal=isMe&&startWorldInteractionBusy&&startWorldActiveAnimation;img.src=startDoctorStandingAsset(info.gender);label.textContent=info.name;if(!animatingLocal){el.style.setProperty('--facing-angle',angle+'deg');el.dataset.facing=facing;el.style.transitionDuration=duration+'ms';el.style.left=(x/START_WORLD_WIDTH*100)+'%';el.style.top=(y/START_WORLD_HEIGHT*100)+'%';el.dataset.x=String(x);el.dataset.y=String(y);}});
+  Object.keys(wanted).forEach(function(clientId){const p=wanted[clientId],info=startWorldPlayerRecord(clientId,p),isMe=clientId===STATE.me.clientId;let el=Array.from(layer.children).find(function(node){return node.dataset.startClient===clientId;});if(!el){el=document.createElement('div');el.className='start-world-player'+(isMe?' me':' remote');el.dataset.startClient=clientId;const img=document.createElement('img'),label=document.createElement('b');img.alt='';el.appendChild(img);el.appendChild(label);layer.appendChild(el);}el.classList.toggle('me',isMe);el.classList.toggle('remote',!isMe);el.classList.toggle('zone-head',playerIsZoneHead(info.name,p.station||''));if(isMe){delete el.dataset.act;delete el.dataset.client;}else{el.dataset.act='startFriendOpen';el.dataset.client=clientId;el.title='กดเพื่อส่งอุปกรณ์ให้ '+info.name;}const img=el.querySelector('img'),label=el.querySelector('b'),x=Math.max(24,Math.min(START_WORLD_WIDTH-24,Number(p.x)||0)),y=Math.max(45,Math.min(START_WORLD_HEIGHT-30,Number(p.y)||0)),oldX=Number(el.dataset.x),oldY=Number(el.dataset.y),dist=Number.isFinite(oldX)?Math.hypot(x-oldX,y-oldY):0,duration=dist?Math.max(120,Math.min(2200,dist/300*1000)):0,facing=p.facing||'south',angle=startWorldFacingAngle(facing),animatingLocal=isMe&&startWorldInteractionBusy&&startWorldActiveAnimation;img.src=startDoctorStandingAsset(info.gender);label.textContent=info.name;if(!animatingLocal){el.style.setProperty('--facing-angle',angle+'deg');el.dataset.facing=facing;el.style.transitionDuration=duration+'ms';el.style.left=(x/START_WORLD_WIDTH*100)+'%';el.style.top=(y/START_WORLD_HEIGHT*100)+'%';el.dataset.x=String(x);el.dataset.y=String(y);}});
   Array.from(layer.children).forEach(function(el){if(!wanted[el.dataset.startClient])el.remove();});
 }
 function moveStartWorldPlayer(stage,event){
@@ -7615,7 +7724,7 @@ function moveStartWorldPlayer(stage,event){
 function startWorldMoveDuration(scene,x,y){const current=twoDLastPosition&&twoDLastPosition.scene===scene?twoDLastPosition:startWorldDefaultPosition(scene),path=startWorldFindPath(scene,current,{x:Number(x),y:Number(y)}),dist=startWorldPathDistance(path);return dist?Math.max(180,Math.min(6000,dist/300*1000)):0;}
 function walkStartWorldTo(scene,x,y,after){
   if(!STATE.me.clientId||currentStartWorldScene()!==scene)return Promise.resolve(false);
-  closeStartWorldFloatingPanels();
+  collapseCommunicationPanel();closeStartWorldFloatingPanels();
   startWorldCancelMovement(scene);const rawCurrent=twoDLastPosition&&twoDLastPosition.scene===scene?twoDLastPosition:startWorldDefaultPosition(scene),current=nearestStartWorldWalkable(scene,rawCurrent.x,rawCurrent.y),target=nearestStartWorldWalkable(scene,x,y),path=startWorldFindPath(scene,current,target),distance=startWorldPathDistance(path),duration=distance?Math.max(180,Math.min(6000,distance/300*1000)):0,finalPoint=path[path.length-1]||target,finalFacing=path.length>1?startWorldFacing(path[path.length-2],finalPoint):'south';
   const selector='.start-world-player[data-start-client="'+CSS.escape(STATE.me.clientId)+'"]';let player=document.querySelector(selector);if(!player){twoDLastPosition=Object.assign({name:STATE.me.name,gender:STATE.me.gender,clientId:STATE.me.clientId,scene:scene,facing:'south',at:Date.now(),station:STATE.me.station||null},current);updateStartWorldPlayers();player=document.querySelector(selector);}startWorldInteractionBusy=true;
   return new Promise(function(resolve){let finished=false,segmentIndex=0;
@@ -7703,6 +7812,7 @@ function updateFieldLogisticsRunners(){
   const tick=function(){let active=false,now=sharedNowMs();nodes.forEach(function(el){let path=[];try{path=JSON.parse(el.dataset.jobPath||'[]');}catch(e){}if(path.length<2)return;const start=Number(el.dataset.moveStart||0),end=Math.max(start+1,Number(el.dataset.moveEnd||0)),p=Math.max(0,Math.min(1,(now-start)/(end-start))),distances=[],total=0;el.style.opacity=now<start?'0':'1';for(let i=1;i<path.length;i++){const d=Math.hypot(path[i].x-path[i-1].x,path[i].y-path[i-1].y);distances.push(d);total+=d;}let remain=p*total,index=0;while(index<distances.length-1&&remain>distances[index]){remain-=distances[index];index++;}const a=path[index],b=path[index+1]||a,t=distances[index]?remain/distances[index]:1,x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t,facing=startWorldFacing(a,b);el.style.left=(x/START_WORLD_WIDTH*100)+'%';el.style.top=(y/START_WORLD_HEIGHT*100)+'%';el.style.setProperty('--runner-angle',startWorldFacingAngle(facing)+'deg');if(p<1)active=true;});if(active)fieldLogisticsRaf=requestAnimationFrame(tick);else fieldLogisticsRaf=null;};tick();
 }
 async function focusTwoDPatient(id,zone){
+  collapseCommunicationPanel();
   const key=zone==='PRIMARY'?'PRIMARY':zone==='SECONDARY'?'SECONDARY':String(zone||'').indexOf('TX_')===0?zone:null;
   STATE.ui.twoD.panelOpen=true;STATE.ui.twoD.supplyZone=null;
   STATE.ui.twoD.panelMinimized=(typeof window!=='undefined'&&window.innerWidth&&window.innerHeight&&window.innerWidth*window.innerHeight<420*680);
@@ -7710,9 +7820,10 @@ async function focusTwoDPatient(id,zone){
   saveLocalSession();
   if(key)await handleClick({dataset:{act:'patientIconFocus',key:key,pid:id}});else render(true);
 }
-async function focusTwoDSupply(zone){STATE.ui.twoD.supplyZone=zone;STATE.ui.twoD.panelOpen=true;STATE.ui.twoD.panelMinimized=(typeof window!=='undefined'&&window.innerWidth&&window.innerHeight&&window.innerWidth*window.innerHeight<420*680);saveLocalSession();render(true)}
+async function focusTwoDSupply(zone){collapseCommunicationPanel();STATE.ui.twoD.supplyZone=zone;STATE.ui.twoD.panelOpen=true;STATE.ui.twoD.panelMinimized=(typeof window!=='undefined'&&window.innerWidth&&window.innerHeight&&window.innerWidth*window.innerHeight<420*680);saveLocalSession();render(true)}
 function collapseTwoDWindowsForMovement(){
   const ui=STATE.ui.twoD||{},changed=!!(ui.panelOpen||ui.panelMinimized||ui.supplyZone||ui.detailPatientId||STATE.ui.patientReview||STATE.ui.fieldDialog);
+  collapseCommunicationPanel();
   ui.panelOpen=false;ui.panelMinimized=false;ui.supplyZone=null;ui.detailPatientId=null;STATE.ui.patientReview=null;STATE.ui.fieldDialog=null;
   if(changed){saveLocalSession();render(true);}
 }
@@ -7734,6 +7845,7 @@ async function handleTwoDFrameMessage(e){
   if(m.type==='ready'){twoDFrameReady=true;twoDLastSync='';twoDLastNavigateScene='';updateTwoDPlayerHost();return;}
   if(m.type==='navigated'){const host=document.getElementById('twoDPlayerHost'),active=(STATE.ui.twoD&&STATE.ui.twoD.activeZone)||twoDZoneForStation(STATE.me.station),scene=active&&TWO_D_ZONES[active]?TWO_D_ZONES[active].scene:null;if(scene===p.scene&&host&&!host.classList.contains('hidden'))f.style.opacity='1';return;}
   if(m.type==='walkStart'){collapseTwoDWindowsForMovement();return;}
+  if(m.type==='uiOpen'){collapseCommunicationPanel();return;}
   if(m.type==='move'){STATE.ui.twoD.lastScene=p.scene||'overview';if(p.scene==='overview'&&Number.isFinite(Number(p.x))&&Number.isFinite(Number(p.y)))STATE.ui.twoD.overviewPos={x:Number(p.x),y:Number(p.y)};queueTwoDPosition(p,false);return;}
   if(m.type==='zoneEnter'){if(!playerTentMoveAllowed()){blockPlayerTentMove();restoreLockedPlayerZone();return;}await enterTwoDZone(p.zone);return;}if(m.type==='zoneExit'){if(!playerTentMoveAllowed()){blockPlayerTentMove();restoreLockedPlayerZone();return;}await exitTwoDZone();return;}
   if(m.type==='treatmentWalkOutArrived'){await completeTreatmentWalkOut(p.patientId);return;}
@@ -7753,7 +7865,7 @@ async function handleTwoDFrameMessage(e){
     saveLocalSession();render(true);return;
   }
   if(m.type==='panelDismiss'){STATE.ui.twoD.panelOpen=false;STATE.ui.twoD.supplyZone=null;STATE.ui.twoD.panelMinimized=false;saveLocalSession();render(true);return;}
-  if(m.type==='openPanel'){STATE.ui.twoD.panelOpen=true;saveLocalSession();render(true);return;}
+  if(m.type==='openPanel'){collapseCommunicationPanel();STATE.ui.twoD.panelOpen=true;saveLocalSession();render(true);return;}
   if(m.type==='vehicleRequest'){
     const allowed=(p.level==='PARKING_TO_COMMAND'&&STATE.me.station==='PARKING')||(p.level==='LOADING_TO_PARKING'&&STATE.me.station==='LOADING');
     const ok=allowed?await createVehicleRequest(p.level,p.type,1,p.requestId):false;if(!allowed)toast('ไม่มีสิทธิ์ส่งคำขอจาก Zone นี้','err');twoDFramePost('actionResult',{action:'vehicleRequest',requestId:p.requestId,ok:!!ok});return;
@@ -7953,7 +8065,7 @@ function commanderReadyStagingPanel(){
   return'<div class="card commander-start-fleet"><div class="flexrow" style="justify-content:space-between"><div><div class="eyebrow">NO-VEHICLE HOSPITAL STAGING</div><h3>ผู้เล่นพร้อมปฏิบัติงาน</h3><div class="hint">สถานะสีเขียว = กดพร้อมแล้ว · เลือกเต็นท์เพื่อส่งผู้เล่นไปทันทีโดยไม่เดินผ่าน Map</div></div><span class="badge '+(STATE.gc.status==='RUNNING'?'ok':'wait')+'">'+(STATE.gc.status==='RUNNING'?'ส่ง Player ได้':'รอ GM เริ่มเกม')+'</span></div><div class="commander-ready-grid">'+(rows||'<div class="empty" style="padding:18px">ยังไม่มี Player รอที่ Hospital</div>')+'</div></div>';
 }
 function viewTwoDStationBody(z){if(!sceneReady())return viewSceneWaiting();if(z==='PRIMARY')return viewPrimary();if(z==='SECONDARY')return viewSecondary();if(z==='TX_RED')return STATE.ui.twoD.supplyZone===z?viewTxSupply('RED'):viewTx('RED');if(z==='TX_YELLOW')return STATE.ui.twoD.supplyZone===z?viewTxSupply('YELLOW'):viewTx('YELLOW');if(z==='TX_GREEN')return STATE.ui.twoD.supplyZone===z?viewTxSupply('GREEN'):viewTx('GREEN');if(z==='LOADING')return viewTransfer();if(z==='PARKING')return transportCombined()?viewTransfer():viewParking();if(z==='COMMAND')return viewCommander();return'<div class="empty">เลือกโซนจากแผนที่ 2D ก่อน</div>'}
-function twoDBuildBadge(){return'<div class="twoD-build-badge"><b>MCI 2D</b> · FIELD OPERATIONS · BUILD 8.2</div>'}
+function twoDBuildBadge(){return'<div class="twoD-build-badge"><b>MCI 2D</b> · FIELD OPERATIONS · V6.2</div>'}
 function parkingLogisticsDockHtml(){const active=(STATE.ui.twoD&&STATE.ui.twoD.activeZone)||twoDZoneForStation(STATE.me.station);if(active!=='PARKING'||!logisticsCanManage())return'';const elapsed=elapsedMinutes(STATE.gc),vehicles=(STATE.vehicles||[]).filter(function(v){return vehicleWorkflowState(v,elapsed)==='READY_PARKING'&&Object.values(normalizedVehicleStart(v).supplies||{}).some(function(n){return Number(n)>0;});});return'<div class="parking-logistics-dock"><span class="startgame-pill">📦 รถใน Parking</span>'+(vehicles.length?vehicles.map(function(v){return'<button class="btn sm primary" data-act="fieldVehicleOpen" data-vehicle="'+esc(v.name)+'">'+esc(v.name)+' · Supply '+startVehicleUnits(normalizedVehicleStart(v),STATE.resources)+'/20</button>';}).join(''):'<span class="hint" style="padding:6px">ไม่มีรถที่มีอุปกรณ์</span>')+'</div>'}
 function viewTwoDWorld(){if(STATE.gc.status==='ENDED'&&STATE.gc.debriefActive)return viewShell(viewPersonalDebrief());if(STATE.gc.status==='ENDED')return viewShell(viewMissionEnded());const active=(STATE.ui.twoD&&STATE.ui.twoD.activeZone)||twoDZoneForStation(STATE.me.station),cmd=STATE.me.station==='COMMANDER',open=!!(STATE.ui.twoD&&STATE.ui.twoD.panelOpen)||cmd,dock=parkingLogisticsDockHtml(),dialog=viewFieldDialog();if(!open)return viewToasts()+twoDBuildBadge()+dock+dialog+'<div class="twoD-floating-tip">คลิกพื้นเพื่อเดินอิสระ · คลิกผู้ป่วยเพื่อเปิดแผงทำงาน · ทุกคนเห็นการขยับแบบ real-time</div>';const z=active||(cmd?'COMMAND':null),r=TWO_D_ZONES[z]||{label:'WORK PANEL'};
   const minimized=!!(STATE.ui.twoD&&STATE.ui.twoD.panelMinimized);
@@ -8142,57 +8254,45 @@ function howToZoneTitle(key){
   const titles={WORLD2D:'MCI 2D World',PRIMARY:'Primary Triage',SECONDARY:'Secondary Triage',TX:'Treatment Zone',LOADING:'Loading',LOADING_PARKING:'Loading + Parking',PARKING:'Parking Control',COMMANDER:'Commander',GM:'Game Master',DISCHARGE:'Discharge Log',DEBRIEF:'Debrief'};
   return titles[key]||stationLabel(key);
 }
-function howToVisualHtml(key){
-  const flows={
-    WORLD2D:[['🧍','รอบนถนน'],['⛺','เลือกเต๊น'],['🩺','ทำภารกิจ']],
-    PRIMARY:[['🔢','รับ No.'],['🏷️','Triage'],['➡️','ส่งต่อ']],
-    SECONDARY:[['🧍','รับผู้ป่วย'],['🔎','ประเมินซ้ำ'],['⛺','ส่ง Treatment']],
-    TX:[['🧍','เลือกผู้ป่วย'],['🩺','Dx / Tx'],['🚑','ส่ง Loading']],
-    LOADING:[['📻','ขอรถ'],['🧍','ขึ้นรถ'],['🏥','ส่ง รพ.']],
-    LOADING_PARKING:[['📻','ขอรถ'],['🚑','รถมาถึง'],['🏥','ส่ง รพ.']],
-    PARKING:[['📻','ขอรถ'],['🅿️','รับรถ'],['➡️','ส่ง Loading']],
-    COMMANDER:[['👥','จัด Staff'],['📻','ตอบ Zone'],['🚑','ส่งรถ']],
-    GM:[['⚙️','ตั้งค่า'],['▶️','เริ่มเกม'],['📊','Monitor']],
-    DISCHARGE:[['📋','ดูรายการ'],['✅','ตรวจผล'],['🧠','ทบทวน']],
-    DEBRIEF:[['🕒','ดู Timeline'],['✅','สิ่งที่ถูก'],['💡','จุดปรับปรุง']]
-  };
-  const items=flows[key]||[['?','เรียนรู้'],['▶️','ลงมือ'],['✅','สำเร็จ']];
-  return '<div class="howto-visual">'+items.map(function(item,i){return (i?'<span class="howto-visual-arrow">›</span>':'')+'<div class="howto-visual-step"><span>'+item[0]+'</span>'+esc(item[1])+'</div>';}).join('')+'</div>';
-}
 function howToStep(title,body,selector,callout){return {title:title,body:body,selector:selector||null,callout:callout||''};}
 function howToStepsForKey(key){
-  const intro=howToStep('ภารกิจของคุณ','ทำงานตามลำดับที่เห็นด้านบน หน้าต่างนี้จะ <b>ชี้ส่วนที่ต้องใช้บนหน้าจอจริง</b> กดถัดไปเพื่อดูทีละจุดได้เลย',null,'กด “ข้าม” ได้ทุกเมื่อ หากเข้าใจวิธีเล่นแล้ว');
-  const radio=howToStep('ติดต่อ Commander','กด <b>📻 COMMAND</b> เพื่ออ่านคำสั่ง ทุกคนอ่านได้ แต่เฉพาะ Head เท่านั้นที่ส่งข้อความหรือคำขอได้','#communicationHost .comm-launch','คำขอสำคัญใช้ข้อความด่วน ส่วนข้อความทั่วไปจะไม่เด้งรบกวนเกม');
+  const intro=howToStep('เริ่มใช้งาน','กดถัดไปเพื่อดูตำแหน่งที่ใช้ทีละจุด',null);
+  const bag=howToStep('ใช้กระเป๋า','กด <b>กระเป๋าซ้ายล่าง</b> เพื่อดู เก็บ คืน หรือส่งอุปกรณ์ให้เพื่อน','#backpackDock');
+  const radio=howToStep('ใช้วอ','กด <b>วอขวาล่าง</b> เพื่ออ่านแชท มีข้อความใหม่จะขึ้นตัวเลขแจ้งเตือน','#communicationHost .comm-launch');
   if(key==='WORLD2D')return [intro,
     howToStep('เริ่มที่ถนน','หลัง Login ตัวละครของคุณจะรออยู่บนถนน ผู้ป่วยจะยังไม่ปรากฏจนกว่า GM จะติ๊กเลือกเคส','.twoD-stage','ผู้ป่วยทุกคนใช้ข้อมูลจริงจากระบบ v6 ไม่ใช่ข้อมูลจำลองอีกชุด'),
     howToStep('เดินเข้าเต๊น','กด <b>ENTER TENT</b> ที่เต๊นซึ่งต้องการ ตัวละครจะเดินไปและสถานีของคุณจะเปลี่ยนตาม Zone','.twoD-tent','ออกจากเต๊นก่อนย้าย Zone หากกำลังรักษา ระบบจะยกเลิกงานและคืนอุปกรณ์ตามกติกา'),
     howToStep('ติดตามการเคลื่อนย้าย','ผู้ป่วยที่ถูกส่งต่อจะเคลื่อนบนแผนที่ 2D จนถึง Zone ถัดไป','.twoD-stage','GM ยังคงเห็น Dashboard แบบเดิมและติดตามทุก Zone ได้แบบ Realtime')];
-  if(key==='PRIMARY')return [intro,
-    howToStep('เลือกผู้ป่วย','กดไอคอนคนในแถบนี้เพื่อเปิดเคส หรือกรอก No. ของผู้ป่วยที่ GM เลือกและอยู่ใน Primary','.player-census','หนึ่ง Player ทำผู้ป่วยได้ครั้งละหนึ่งคน ระบบจะล็อกไม่ให้คนอื่นเลือกซ้ำ'),
-    howToStep('เปิดด้วย Patient No.','ช่องนี้เปิดได้เฉพาะผู้ป่วยที่อยู่ใน Primary แล้ว ไม่สร้างผู้ป่วยใหม่','.patient-search-card'),
-    howToStep('ทำ Primary Triage','ประเมินแล้วเลือก <b>RED / YELLOW / GREEN / BLACK</b> จากนั้นทำ Initial Treatment ที่อนุญาต ปัจจุบัน Triage ใช้ได้เฉพาะ <b>OPA/NPA</b>','.patient-card','คนเดินได้ควรถูกแยกเป็น GREEN และส่งต่อ Secondary โดยเร็ว'),
-    howToStep('ส่งต่อผู้ป่วย','เมื่อระบุสีแล้ว กด <b>ส่งต่อ Secondary Triage</b> ผู้ป่วยจะเคลื่อนย้ายตามระยะทางที่ GM กำหนด','.patient-card'),radio];
-  if(key==='SECONDARY')return [intro,
-    howToStep('เลือกผู้ป่วยใน Zone','กดไอคอนคนเพื่อเปิด Secondary Triage ของผู้ป่วยรายนั้น','.player-census','ผู้ป่วยที่ถูก Player อื่นล็อกอยู่จะเลือกซ้ำไม่ได้'),
-    howToStep('เปิดด้วย Patient No.','กรอก No. เพื่อเปิดผู้ป่วยที่ถูกส่งมาจาก Primary เท่านั้น ระบบจะไม่สร้างเคสใหม่','.patient-search-card','Primary ที่ส่งมาจาก Primary จะไม่แก้ไขจากหน้านี้'),
-    howToStep('ประเมิน Secondary','เลือกสี Secondary ตามการประเมินล่าสุด แล้วส่งเข้า Treatment ตามสีนั้น','.patient-card','ตรวจสีและอาการซ้ำ เพราะผู้ป่วยอาจเปลี่ยนแปลงระหว่างเคลื่อนย้าย'),radio];
-  if(key==='TX')return [intro,
-    howToStep('ตรวจคลังอุปกรณ์','ดูจำนวนอุปกรณ์ตั้งแต่เริ่ม หากไม่พอให้ Head ขอเพิ่มจาก Commander/GM','.treatment-resource-capacity'),
-    howToStep('เลือกผู้ป่วย','กดไอคอนคนเพื่อเปิด Treatment ผู้เล่นหนึ่งคนรักษาได้ทีละหนึ่งราย','.player-census','ถ้ากำลังรักษาอยู่ ต้องจบหรือยกเลิกก่อนเปลี่ยนผู้ป่วย'),
-    howToStep('เปิดเคสด้วย No.','ใช้ไอคอนด้านบนได้เร็วที่สุด หรือกรอก No. ในช่องนี้','.patient-search-card'),
-    howToStep('บันทึก Dx และรักษา','กรอก Diagnosis/Handoff note แล้วเลือก Treatment ตามลำดับ รอรายการก่อนหน้าสำเร็จก่อนเริ่มรายการถัดไป','.treatment-workspace','การยกเลิก Treatment จะคืนอุปกรณ์เข้า stock'),
-    howToStep('ส่งต่อเมื่อพร้อม','กดส่งไป Loading หรือ Discharge ได้ แม้รักษาไม่ครบ แต่ผลลัพธ์จะสะท้อนใน Debrief','.treatment-actions'),radio];
-  if(key==='LOADING'||key==='LOADING_PARKING')return [intro,
-    howToStep('จำความจุรถ','ALS/BLS รับ <b>นั่ง 2 คน หรือ นอน 1 คน</b> ส่วน BUS รับนั่ง 10 คนและรับผู้ป่วยนอนไม่ได้','.vehicle-rulebar'),
-    howToStep('ขอและเลือกรถ',key==='LOADING_PARKING'&&STATE.gc.externVehiclesReadyAtStart?'โหมดนี้ตั้งให้รถทุกคันพร้อมที่ <b>Loading + Parking</b> ตั้งแต่เริ่มเกม เลือกรถได้ทันทีโดยไม่ต้องรอวิ่งมาจากโรงพยาบาล':key==='LOADING_PARKING'?'พิมพ์จำนวน ALS/BLS/BUS ที่ต้องการ รถที่ Command/GM ส่งจะมาจอดที่นี่โดยตรง':'พิมพ์จำนวนรถที่ต้องการส่งคำขอไป Parking แล้วเลือกรถเมื่อมาถึง','.transfer-workflow .transfer-step:nth-child(1)','รถที่ Player คนอื่นกำลังเลือกจะหายจากตัวเลือก เพื่อป้องกันการใช้ซ้ำ'),
-    howToStep('เลือกผู้ป่วยขึ้นรถ','หลังเลือกรถ ให้กดผู้ป่วยในคิว ระบบจะแสดง Dx, Treatment และตรวจความจุรถให้','.transfer-workflow .transfer-step:nth-child(2)','ผู้ป่วยเสียชีวิตจะไม่สามารถนำขึ้นรถหรือย้าย Zone ได้'),
-    howToStep('เลือกโรงพยาบาลและส่ง','ตรวจผู้ป่วยบนรถ เลือกโรงพยาบาลตามสีและ Capacity แล้วกด <b>SEND</b>','.transfer-staging','รถจะไปโรงพยาบาลและกลับตามเวลาหรือเส้นทางที่กำหนด'),radio];
-  if(key==='PARKING')return [intro,
-    howToStep('จำความจุรถ','ALS/BLS รับนั่ง 2 หรือนอน 1 ส่วน BUS รับนั่ง 10 และรับผู้ป่วยนอนไม่ได้','.vehicle-rulebar'),
-    howToStep('ติดตามรถที่ขอ','Fleet Status แสดงเฉพาะรถที่ขอเข้าพื้นที่แล้ว พร้อม Zone ปัจจุบันและเวลาที่จะมาถึง','.fleet-status-card','รถที่ยังอยู่กองสำรองจะไม่แสดงในหน้า Parking'),
-    howToStep('รับคำขอจาก Loading','เมื่อ Loading ขอรถ ให้เลือกรถประเภทที่ตรงกันแล้วกดส่งไป Loading','.parking-request-grid > div:first-child'),
-    howToStep('ขอรถเพิ่มจาก Command','หากรถไม่พอ ให้พิมพ์จำนวน ALS/BLS/BUS แล้วส่งคำขอ Command/GM','.parking-request-grid > div:last-child'),
-    howToStep('ตรวจรถพร้อมใช้','รถที่จอดใน Ambulance Parking พร้อมรับคำสั่งส่งไป Loading','.ambulance-bay'),radio];
+  if(key==='PRIMARY')return [
+    howToStep('เลือกผู้ป่วย','กดตัวผู้ป่วยเพื่อเปิดเคส',['#primaryPatients .patient','.mci-howto-demo-patient']),
+    howToStep('ดูข้อมูลผู้ป่วย','อ่านอาการ P, RR, CRT และ GCS',['#primaryPanel #primaryFacts','.mci-howto-demo-info']),
+    howToStep('เลือกสี Triage','กด <b>RED / YELLOW / GREEN / BLACK</b> เปลี่ยนสีได้ก่อนส่งต่อ',['#primaryPanel .actionGrid','.mci-howto-demo-triage']),
+    howToStep('ส่งต่อผู้ป่วย','กดส่ง Secondary และขอพนักงานเปลถ้าผู้ป่วยนอน',['#primaryPanel #primarySend','.mci-howto-demo-send'],'อย่าลืมขอพนักงานเปล'),bag,radio];
+  if(key==='SECONDARY')return [
+    howToStep('เลือกผู้ป่วย','กดตัวผู้ป่วยใน Secondary',['#secondaryPatients .patient','.mci-howto-demo-patient']),
+    howToStep('วัด V/S','กดวัด BP, SpO₂ และตรวจร่างกาย',['#secondaryPanel .facts','.mci-howto-demo-vitals']),
+    howToStep('ทำ Triage','เลือกสี Secondary จาก V/S ล่าสุด',['#secondaryPanel .actionGrid','.mci-howto-demo-triage']),
+    howToStep('ส่งต่อผู้ป่วย','ส่งเข้า Treatment และขอพนักงานเปลถ้าผู้ป่วยนอน',['#secondaryPanel #secondarySend','.mci-howto-demo-send']),bag,radio];
+  if(key==='TX')return [
+    howToStep('เลือกผู้ป่วย','กดผู้ป่วยบนเตียงหรือจุดยืน',['#beds .bed','#holdingPatients .patient','.mci-howto-demo-patient']),
+    howToStep('ประเมินอาการ','อ่านอาการและ V/S ก่อนรักษา',['#treatmentPanel #tFacts','.mci-howto-demo-info']),
+    howToStep('หยิบ Supply','กดตู้ Supply แล้วหยิบอุปกรณ์ใส่กระเป๋า','.mci-howto-supply-target'),
+    howToStep('เลือก Treatment','กดไอคอนการรักษาและรอให้เสร็จ',['#treatmentPanel .txgrid','.mci-howto-demo-treatment']),
+    howToStep('ส่งต่อผู้ป่วย','เมื่อพร้อม กดส่งไป Loading',['#treatmentPanel #toLoadingBtn','.mci-howto-demo-send']),bag,radio];
+  if(key==='LOADING'||key==='LOADING_PARKING')return [
+    howToStep('ดูความจุรถ','ALS/BLS: นอน 1 หรือนั่ง 2 · BUS: นั่ง 10','#vehicleCapacityHud'),
+    howToStep('ขอรถจาก Parking','กดขอ ALS, BLS หรือ BUS ตามที่ต้องการ',['#loadingRequestBar','.mci-howto-demo-request']),
+    howToStep('รถเข้า Loading','รถวิ่งตามถนนและจอดที่ Active Loading Bay',['.mci-howto-loading-bay-target','#loadingStage .activeBay']),
+    howToStep('เลือกผู้ป่วย','กดผู้ป่วยใน Loading',['#loadingPatients .patient','.mci-howto-demo-patient']),
+    howToStep('เลือกรถ','เลือกรถที่จอดรอและยังมีความจุ','.mci-howto-demo-select-vehicle'),
+    howToStep('เลือกโรงพยาบาล','เลือกโรงพยาบาลปลายทาง','.mci-howto-demo-hospital'),
+    howToStep('ส่งรถออก','ตรวจคนไข้บนรถแล้วกด <b>SEND</b>','.mci-howto-demo-send'),bag,radio];
+  if(key==='PARKING')return [
+    howToStep('ดูความจุรถ','ALS/BLS: นอน 1 หรือนั่ง 2 · BUS: นั่ง 10','#vehicleCapacityHud'),
+    howToStep('ขอรถ','กดขอ ALS, BLS หรือ BUS จาก Command/GM',['#parkingRequestBar','.mci-howto-demo-request']),
+    howToStep('ดูจุดจอดรถ','รถพร้อมใช้จอดในช่อง Ambulance Parking',['#parkingLot','.mci-howto-demo-parked']),
+    howToStep('ดูรถที่ถูกขอ','เมื่อ Loading ขอรถ คันที่ต้องส่งจะเรืองแสง',['.mci-howto-demo-real-glow','.mci-howto-demo-glow']),
+    howToStep('ส่งไป Loading','เลือกรถตามประเภทแล้วส่งไป Loading','.mci-howto-demo-parking-send'),bag,radio];
   if(key==='COMMANDER')return [intro,
     howToStep('จัด Player และ Head','ดูรายชื่อ Player แล้วเลือก Zone หลังชื่อ กด 🚩 เพื่อแต่งตั้ง Head และกด 📻 เพื่อเปิดห้อง Zone','.commander-roster-card','ถ้ามีคำขอย้ายในแชท กด “ย้ายทันที” เพื่อย้าย Player และตอบกลับอัตโนมัติ'),
     howToStep('ตอบคำขอรถ','เมื่อ Parking หรือ Loading + Parking ขอรถ ให้เลือกรถสำรอง เลือกโรงพยาบาลต้นทาง แล้วส่งรถตามจำนวนที่พร้อม','.command-vehicle-request-panel'),
@@ -8209,19 +8309,78 @@ function howToStepsForKey(key){
     howToStep('หาโอกาสปรับปรุง','ดูเครื่องหมายถูก/ผิดและเวลาของแต่ละเหตุการณ์ เพื่อทบทวนว่าช้า ผิดสี รักษาไม่ครบ หรือเลือกรถไม่เหมาะตรงไหน','.card','Debrief มีไว้เรียนรู้จากระบบ ไม่ใช่เพื่อตำหนิผู้เล่น')];
   return [intro];
 }
+function clearHowToDemoObjects(){
+  document.querySelectorAll('[data-mci-howto-demo-parent]').forEach(function(el){el.remove();});
+  const frame=document.getElementById('twoDPlayerFrame'),doc=frame&&frame.contentDocument;if(!doc)return;
+  doc.querySelectorAll('.mci-howto-demo-real-glow').forEach(function(el){el.classList.remove('mci-howto-demo-real-glow');});
+  doc.querySelectorAll('[data-mci-howto-demo]').forEach(function(el){el.remove();});
+  const style=doc.getElementById('mciHowToDemoStyle');if(style)style.remove();
+}
+function howToElementVisible(el){
+  if(!el)return false;
+  const win=el.ownerDocument&&el.ownerDocument.defaultView,style=win&&win.getComputedStyle?win.getComputedStyle(el):null,rect=el.getBoundingClientRect();
+  return (!style||style.display!=='none'&&style.visibility!=='hidden')&&rect.width>4&&rect.height>4;
+}
+function ensureHowToDemoObjects(key){
+  const frame=document.getElementById('twoDPlayerFrame'),doc=frame&&frame.contentDocument;if(!doc||!doc.body)return;
+  const demoSignature=key+':'+HOWTO_STATE.index,old=doc.querySelector('[data-mci-howto-demo="root"]');if(old&&old.dataset.signature===demoSignature)return;
+  clearHowToDemoObjects();
+  if(['PRIMARY','SECONDARY','TX','LOADING','LOADING_PARKING','PARKING'].indexOf(key)<0)return;
+  const style=doc.createElement('style');style.id='mciHowToDemoStyle';style.dataset.mciHowtoDemo='style';style.textContent='\
+    .mci-howto-demo-root{position:fixed;inset:0;z-index:2147483000;pointer-events:none;font-family:system-ui,sans-serif;color:#eefbff}\
+    .mci-howto-demo-patient{position:fixed;left:7vw;top:34vh;width:88px;padding:9px 7px;border:2px solid #5ce9dd;border-radius:13px;background:#12232dcc;box-shadow:0 0 22px #35d7ca66;text-align:center;font-weight:900;font-size:12px}\
+    .mci-howto-demo-patient img{display:block;width:58px;height:72px;object-fit:contain;margin:auto}\
+    .mci-howto-demo-scene-target{position:absolute;border-radius:8px;pointer-events:none}\
+    .mci-howto-demo-glow,.mci-howto-demo-real-glow{animation:mciHowToGlow .75s ease-in-out infinite alternate!important}\
+    @keyframes mciHowToGlow{from{box-shadow:0 0 8px #ffd54a;border-color:#ffd54a}to{box-shadow:0 0 34px 10px #ffd54acc;border-color:#fff3a8}}';doc.head.appendChild(style);
+  const root=doc.createElement('div');root.className='mci-howto-demo-root';root.dataset.mciHowtoDemo='root';root.dataset.key=key;root.dataset.signature=demoSignature;
+  function hasVisible(selector){return Array.from(doc.querySelectorAll(selector)).some(howToElementVisible);}
+  function parentHasVisible(selector){return Array.from(document.querySelectorAll(selector)).some(howToElementVisible);}
+  const patientAsset='<div class="mci-howto-demo-patient"><img src="assets/characters/patient_walking_male.png" alt="">ผู้ป่วย DEMO</div>';
+  const primaryPatient=hasVisible('#primaryPatients .patient')?'':patientAsset,secondaryPatient=hasVisible('#secondaryPatients .patient')?'':patientAsset,treatmentPatient=hasVisible('#beds .bed,#holdingPatients .patient')?'':patientAsset,loadingPatient=hasVisible('#loadingPatients .patient')?'':patientAsset;
+  if(key==='PRIMARY')root.innerHTML=primaryPatient;
+  if(key==='SECONDARY')root.innerHTML=secondaryPatient;
+  if(key==='TX')root.innerHTML=treatmentPatient;
+  if(key==='LOADING'||key==='LOADING_PARKING')root.innerHTML=loadingPatient;
+  doc.body.appendChild(root);
+  const fake={id:'DEMO',canWalk:'no',gender:'M'},avatar=patientFocusAvatarHtml(fake,'RED');
+  function vital(label,value){return '<div class="clinical-vital"><span>'+label+'</span><b>'+value+'</b></div>';}
+  function demoClinical(primary){return '<div class="clinical-case-panel mci-howto-demo-info"><div class="clinical-case-head"><div class="clinical-case-title">ปวดท้อง หายใจเร็ว ซีด</div><div class="clinical-case-meta">ชาย · 32 ปี</div></div><div class="clinical-vitals-grid '+(primary?'primary-only':'')+'">'+vital('P','125 /min')+vital('RR','28 /min')+(primary?'':vital('BP','90/58'))+(primary?'':vital('SpO₂','94 %'))+vital('CRT','3 sec')+vital('GCS','13')+'</div>'+(primary?'':'<div class="clinical-exam"><b>Physical examination</b> · กดวัดและประเมินตามขั้นตอน</div>')+'</div>';}
+  function mountPlayerDemo(html){if(parentHasVisible('.patient-card'))return;const panel=document.createElement('div');panel.className='mci-howto-demo-player-panel';panel.dataset.mciHowtoDemoParent='panel';panel.innerHTML=html;document.body.appendChild(panel);}
+  if(key==='PRIMARY'&&HOWTO_STATE.index<=3)mountPlayerDemo('<div class="patient-card stripe-RED"><div class="pidrow">'+avatar+'<span class="pid">#DEMO</span><span class="badge neutral">🛏️ นอน</span></div>'+demoClinical(true)+'<div class="subrow mci-howto-demo-triage"><span class="label" style="margin:0 8px 0 0">Primary triage</span>'+triageButtonsHtml('DEMO','primary','RED','noop',false)+'</div><div class="card" style="padding:10px;margin-top:10px"><b>Initial Treatment · สูงสุด 1 รายการ</b><select><option>— เลือก Treatment —</option></select></div><div class="subrow"><button class="btn sm primary mci-howto-demo-send">ขอพนักงานเปล → Secondary Triage</button><button class="btn sm">Discharge</button></div></div>');
+  if(key==='SECONDARY'&&HOWTO_STATE.index<=3)mountPlayerDemo('<div class="patient-card stripe-YELLOW"><div class="pidrow">'+avatar+'<span class="pid">#DEMO</span><span class="badge neutral">🛏️ นอน</span> Primary: <span class="badge RED">RED</span></div>'+demoClinical(false)+'<div class="clinical-measure-actions mci-howto-demo-vitals"><button class="btn sm clinical-measure-btn">วัด BP</button><button class="btn sm clinical-measure-btn">วัด SpO₂</button><button class="btn sm clinical-measure-btn">ตรวจร่างกาย / GCS</button></div><div class="subrow mci-howto-demo-triage"><span class="label" style="margin:0 8px 0 0">Secondary triage</span>'+triageButtonsHtml('DEMO','secondary','YELLOW','noop',false)+'</div><div class="subrow"><button class="btn sm primary mci-howto-demo-send">ขอพนักงานเปล → Treatment</button><button class="btn sm">Discharge</button></div></div>');
+  if(key==='TX'&&HOWTO_STATE.index<=4)mountPlayerDemo('<div class="patient-card stripe-RED"><div class="pidrow">'+avatar+'<span class="pid">#DEMO</span><span class="badge neutral">🛏️ นอน</span></div>'+demoClinical(false)+'<label class="label">Diagnosis / Impression (Dx)</label><input value="Suspected internal bleeding"><div class="kv mci-howto-demo-treatment"><span class="k">Tx1</span><span class="v"><select><option>IV fluid ×1</option></select></span></div><div class="subrow"><button class="btn sm primary mci-howto-demo-send">ส่งต่อ Transfer →</button><button class="btn sm">Discharge</button></div></div>');
+  if((key==='LOADING'||key==='LOADING_PARKING')&&HOWTO_STATE.index>=3&&HOWTO_STATE.index<=4)mountPlayerDemo('<div class="patient-card stripe-RED"><div class="pidrow">'+avatar+'<span class="pid">#DEMO</span><span class="badge neutral">🛏️ นอน</span></div>'+demoClinical(false)+'<div class="clinical-exam"><b>Treatment ที่ได้รับ</b> · IV fluid · O₂ mask c bag</div><div class="transfer-step"><label class="label">เลือกรถที่จอดใน Loading</label><select class="mci-howto-demo-select-vehicle"><option>ALS_DEMO · เหลือนอน 1 / นั่ง 2</option></select><button class="btn sm primary" style="margin-top:8px">นำผู้ป่วยขึ้นรถ</button></div></div>');
+  /* Measured from the supplied 1536×1024 interiors and mapped to each
+     renderer's 1500×950 coordinate system (not guessed viewport pixels). */
+  if(key==='TX'&&HOWTO_STATE.index===2){const stage=doc.getElementById('treatmentStage');if(stage){const target=doc.createElement('div');target.className='mci-howto-demo-scene-target mci-howto-supply-target';target.dataset.mciHowtoDemo='supply';target.style.cssText='left:689px;top:35px;width:124px;height:143px';stage.appendChild(target);}}
+  if(key==='LOADING'||key==='LOADING_PARKING'){
+    const stage=doc.getElementById('loadingStage');if(stage){const bay=doc.createElement('div');bay.className='mci-howto-demo-scene-target mci-howto-loading-bay-target';bay.dataset.mciHowtoDemo='bay';bay.style.cssText='left:1035px;top:564px;width:325px;height:284px';stage.appendChild(bay);}
+    if(!hasVisible('#loadingVehicles .vehicle')){const host=doc.getElementById('loadingVehicles');if(host){const vehicle=doc.createElement('div');vehicle.className='vehicle als';vehicle.dataset.mciHowtoDemo='vehicle';vehicle.style.transform='translate3d(1100px,690px,0)';vehicle.innerHTML='<img class="vehicleSprite" src="assets/vehicles/ambulance_als_top.png" alt="ALS DEMO"><img class="vehicleAssetLight" src="assets/vehicles/lightbar_red_blue.png" alt=""><div class="onboardLayer"></div><div class="vehLabel">ALS_DEMO</div>';host.appendChild(vehicle);}}
+    if(HOWTO_STATE.index===5||HOWTO_STATE.index===6){const original=doc.getElementById('vehicleSendModal');if(original){const modal=original.cloneNode(true),hospital=modal.querySelector('#vehicleHospitalSelect'),send=modal.querySelector('#sendVehicleBtn');modal.id='mciHowToVehicleSendModal';modal.dataset.mciHowtoDemo='send-modal';modal.classList.add('show');modal.style.display='block';modal.querySelectorAll('[id]').forEach(function(el){el.id='mciDemo_'+el.id;});const title=modal.querySelector('h3');if(title)title.textContent='SEND VEHICLE · ALS_DEMO';if(hospital){hospital.innerHTML='<option>Hospital A · RED ว่าง 3</option><option>Hospital B · RED ว่าง 2</option>';hospital.classList.add('mci-howto-demo-hospital');}if(send){send.textContent='SEND';send.classList.add('mci-howto-demo-send');send.disabled=false;}doc.body.appendChild(modal);}}
+  }
+  if(key==='PARKING'){
+    const realVehicle=Array.from(doc.querySelectorAll('#parkingVehicles .vehicle,#parkingRoadVehicles .vehicle')).find(howToElementVisible);if(realVehicle)realVehicle.classList.add('mci-howto-demo-real-glow');
+    else{const host=doc.getElementById('parkingVehicles')||doc.getElementById('parkingRoadVehicles');if(host){const vehicle=doc.createElement('div');vehicle.className='vehicle als mci-howto-demo-glow mci-howto-demo-parked';vehicle.dataset.mciHowtoDemo='parking-vehicle';vehicle.style.transform='translate3d(260px,335px,0)';vehicle.innerHTML='<img class="vehicleSprite" src="assets/vehicles/ambulance_als_top.png" alt="ALS DEMO"><img class="vehicleAssetLight" src="assets/vehicles/lightbar_red_blue.png" alt=""><div class="onboardLayer"></div><div class="vehLabel">ALS_DEMO</div>';host.appendChild(vehicle);}}
+    if(HOWTO_STATE.index===4&&!parentHasVisible('.mci-howto-demo-parking-send')){const panel=document.createElement('div');panel.className='mci-howto-demo-player-panel';panel.dataset.mciHowtoDemoParent='parking';panel.innerHTML='<div class="card"><div class="eyebrow">AMBULANCE PARKING</div><h3>คำขอรถจาก Loading</h3><div class="transfer-step"><b>ขอ ALS ×1</b><div class="hint">รถ ALS_DEMO กำลังเรืองแสงในช่องจอด</div><button class="btn primary mci-howto-demo-parking-send" style="margin-top:9px">ส่ง ALS_DEMO ไป Loading</button></div></div>';document.body.appendChild(panel);}
+  }
+}
 function howToTargetForStep(step){
   if(!step||!step.selector)return null;
   const selectors=Array.isArray(step.selector)?step.selector:[step.selector];
-  for(let i=0;i<selectors.length;i++){const el=document.querySelector(selectors[i]);if(el)return el;}
+  const frame=document.getElementById('twoDPlayerFrame'),frameDoc=frame&&frame.contentDocument;
+  for(let i=0;i<selectors.length;i++){const el=document.querySelector(selectors[i]);if(howToElementVisible(el))return el;if(frameDoc){const inside=frameDoc.querySelector(selectors[i]);if(howToElementVisible(inside))return inside;}}
   return null;
 }
 function openHowTo(){
   const key=currentHowToKey();if(!key)return;
+  collapseCommunicationPanel();
   if(key==='GM'&&STATE.gmTab!=='control'){STATE.gmTab='control';render(true);}
   HOWTO_STATE.open=true;HOWTO_STATE.key=key;HOWTO_STATE.index=0;renderHowTo();
 }
 function closeHowTo(){
   HOWTO_STATE.open=false;HOWTO_STATE.key=null;HOWTO_STATE.index=0;
+  clearHowToDemoObjects();
   const host=document.getElementById('howToPlayHost');if(host){host.classList.add('hidden');host.innerHTML='';}
 }
 function moveHowTo(delta){
@@ -8234,10 +8393,11 @@ function renderHowTo(){
   const host=document.getElementById('howToPlayHost');if(!host||!HOWTO_STATE.open)return;
   if(HOWTO_STATE.key!==currentHowToKey()){closeHowTo();return;}
   const steps=howToStepsForKey(HOWTO_STATE.key);HOWTO_STATE.index=Math.min(HOWTO_STATE.index,steps.length-1);
+  ensureHowToDemoObjects(HOWTO_STATE.key);
   const step=steps[HOWTO_STATE.index],target=howToTargetForStep(step),last=HOWTO_STATE.index===steps.length-1;
   const dots=steps.map(function(_,i){return '<span class="howto-dot '+(i===HOWTO_STATE.index?'active':i<HOWTO_STATE.index?'done':'')+'"></span>';}).join('');
   host.classList.remove('hidden');
-  host.innerHTML='<div class="howto-spotlight '+(target?'':'no-target')+'" id="howToSpotlight"></div><section class="howto-card" id="howToCard" data-placement="center" role="dialog" aria-modal="true" aria-label="วิธีเล่น '+esc(howToZoneTitle(HOWTO_STATE.key))+'"><div class="howto-top"><span class="howto-brand">HOW TO PLAY · '+esc(howToZoneTitle(HOWTO_STATE.key))+'</span><button class="howto-skip" data-howto-act="skip">ข้าม ✕</button></div><div class="howto-content">'+howToVisualHtml(HOWTO_STATE.key)+'<div class="howto-kicker">STEP '+(HOWTO_STATE.index+1)+'</div><h2 class="howto-title">'+esc(step.title)+'</h2><div class="howto-body">'+step.body+'</div>'+(step.callout?'<div class="howto-callout"><span>💡</span><span>'+step.callout+'</span></div>':'')+'</div><div class="howto-bottom"><div class="howto-progress"><div class="howto-dots">'+dots+'</div><span class="howto-count">'+(HOWTO_STATE.index+1)+' / '+steps.length+'</span></div><div class="howto-actions"><span class="howto-keyhint">← → ใช้ลูกศรได้</span>'+(HOWTO_STATE.index?'<button class="btn sm" data-howto-act="prev">ย้อนกลับ</button>':'')+'<button class="btn sm primary howto-next" data-howto-act="next">'+(last?'เข้าใจแล้ว ✓':'ถัดไป →')+'</button></div></div></section>';
+  host.innerHTML='<div class="howto-spotlight '+(target?'':'no-target')+'" id="howToSpotlight"></div><section class="howto-card" id="howToCard" data-placement="center" role="dialog" aria-modal="true" aria-label="วิธีเล่น '+esc(howToZoneTitle(HOWTO_STATE.key))+'"><div class="howto-top"><span class="howto-brand">HOW TO PLAY · '+esc(howToZoneTitle(HOWTO_STATE.key))+'</span><button class="howto-skip" data-howto-act="skip">ข้าม ✕</button></div><div class="howto-content"><div class="howto-kicker">STEP '+(HOWTO_STATE.index+1)+'</div><h2 class="howto-title">'+esc(step.title)+'</h2><div class="howto-body">'+step.body+'</div>'+(step.callout?'<div class="howto-callout"><span>💡</span><span>'+step.callout+'</span></div>':'')+'</div><div class="howto-bottom"><div class="howto-progress"><div class="howto-dots">'+dots+'</div><span class="howto-count">'+(HOWTO_STATE.index+1)+' / '+steps.length+'</span></div><div class="howto-actions"><span class="howto-keyhint">← → ใช้ลูกศรได้</span>'+(HOWTO_STATE.index?'<button class="btn sm" data-howto-act="prev">ย้อนกลับ</button>':'')+'<button class="btn sm primary howto-next" data-howto-act="next">'+(last?'เข้าใจแล้ว ✓':'ถัดไป →')+'</button></div></div></section>';
   if(target){
     const rect=target.getBoundingClientRect();
     if(rect.bottom<70||rect.top>window.innerHeight-70)target.scrollIntoView({block:'center',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
@@ -8272,10 +8432,11 @@ function refreshHowToAfterRender(){
 function renderClockPill(){
   const archived=STATE.me&&STATE.me.station==='GM'&&STATE.gmTab==='archives'&&STATE.selectedArchive,gc=archived?(STATE.selectedArchive.gc||DEFAULT_GC):STATE.gc;
   const elapsed = elapsedMinutes(gc);
-  const statusLabel = archived?'Saved Game · Read Only':gc.status==='RUNNING' ? 'กำลังดำเนินการ' : gc.status==='ENDED' ? 'จบเกมแล้ว' : 'ยังไม่เริ่ม';
+  const paused=!archived&&gc.status==='RUNNING'&&gc.clockPaused;
+  const statusLabel = archived?'Saved Game · Read Only':paused?'หยุดเวลา':gc.status==='RUNNING' ? 'กำลังดำเนินการ' : gc.status==='ENDED' ? 'จบเกมแล้ว' : 'ยังไม่เริ่ม';
   return ''
   + '<div class="clockwrap">'
-  +   '<span class="pill status-'+gc.status+'">● '+statusLabel+'</span>'
+  +   '<span class="pill status-'+(paused?'PAUSED':gc.status)+'">'+(paused?'⏸':'●')+' '+statusLabel+'</span>'
   +   '<span class="timerbig" id="liveTimer">'+ (gc.status==='NOT_STARTED' ? '--:--' : fmtClock(elapsed)) +'</span>'
   +   '<span class="pill">Max <b>'+gc.maxGameMin+'</b> น.</span>'
   + '</div>';
@@ -8596,7 +8757,7 @@ function viewPrimary(){
   const p=focusedPatient('PRIMARY',queue);
   let card='';
   if(p){
-    const dead=patientIsDead(p,elapsed),busy=hasAnyTxInProgress(p,elapsed),triageBlocked=busy||!staffFree||!!p.primary;
+    const dead=patientIsDead(p,elapsed),busy=hasAnyTxInProgress(p,elapsed),triageBlocked=busy||!staffFree;
     card='<div class="patient-card stripe-'+(p.primary||'')+'">'
       +'<div class="pidrow">'+patientFocusAvatarHtml(p,p.primary||'gray')+'<span class="pid">#'+esc(p.id)+'</span>'+canWalkBadge(effectiveCanWalk(p))+(dead?'<span class="badge dead">DEAD</span>':'')+'</div>'
       +clinicalCaseDetailsHtml(p,{mode:'primary',elapsed:elapsed})
@@ -8617,7 +8778,7 @@ function viewSecondary(){
   const p=focusedPatient('SECONDARY',queue);
   let card='';
   if(p){
-    const dead=patientIsDead(p,elapsed),isBlack=p.secondary==='BLACK',busy=hasAnyTxInProgress(p,elapsed),triageBlocked=busy||!staffFree||!!p.secondary;
+    const dead=patientIsDead(p,elapsed),isBlack=p.secondary==='BLACK',busy=hasAnyTxInProgress(p,elapsed),triageBlocked=busy||!staffFree;
     card='<div class="patient-card stripe-'+(p.secondary||p.primary||'')+'"><div class="pidrow">'+patientFocusAvatarHtml(p,p.secondary||p.primary||'gray')+'<span class="pid">#'+esc(p.id)+'</span>'+canWalkBadge(effectiveCanWalk(p))+' Primary: '+triageBadge(p.primary)+(p.secondaryDirectRegistration?'<span class="badge wait">รับตรงที่ Secondary</span>':'')+(dead?'<span class="badge dead">DEAD</span>':'')+'</div>'
       +clinicalCaseDetailsHtml(p,{mode:'staged',stage:'SECONDARY',elapsed:elapsed})
       +(dead?'<div class="hint" style="color:var(--red);">'+esc(deathReasonFor(p,elapsed))+' — ค้างที่ Secondary Triage</div>':'<div class="subrow"><span class="label" style="margin:0 8px 0 0;">Secondary triage</span>'+triageButtonsHtml(p.id,'secondary',p.secondary,'secondarySet',triageBlocked)+'</div>'+triageTreatmentHtml(p,'SECONDARY',elapsed)+'<div class="subrow">'+(isBlack?'':porterAwareTransferButtonHtml(p,'SECONDARY','TX','Treatment','secondarySend','data-pid="'+esc(p.id)+'" data-dest="TX"',!p.secondary||busy))+'<button class="btn sm" data-act="secondarySend" data-pid="'+esc(p.id)+'" data-dest="DISCHARGE" '+((!p.secondary||busy)?'disabled':'')+'>Discharge</button></div>')+'</div>';
@@ -9274,7 +9435,7 @@ function gmTabControl(){
   + '<div class="card gm-game-controls"><div class="grid cols-2"><div>'
   +   '<div class="eyebrow">GAME CONTROL</div><h2 style="margin:4px 0 8px">ควบคุมเกม</h2>'
   +   '<div class="hint" style="margin-bottom:8px;">สถานะ Start Game: <b>'+startStatus+'</b></div>'
-  +   '<div class="flexrow"><button class="btn primary" data-act="gmStart" '+(gc.status!=='NOT_STARTED'?'disabled':'')+'>▶️ เริ่มเกม</button><button class="btn" data-act="gmEnd" '+(gc.status!=='RUNNING'?'disabled':'')+'>⏹ จบเกม</button><button class="btn danger" data-act="gmReset">🔄 Reset</button></div>'
+  +   '<div class="flexrow"><button class="btn primary" data-act="gmStart" '+(gc.status!=='NOT_STARTED'?'disabled':'')+'>▶️ เริ่มเกม</button><button class="btn" data-act="gmClockPause" '+(gc.status!=='RUNNING'?'disabled':'')+'>'+(gc.clockPaused?'▶️ นับเวลาต่อ':'⏸️ หยุดเวลาชั่วคราว')+'</button><button class="btn" data-act="gmEnd" '+(gc.status!=='RUNNING'?'disabled':'')+'>⏹ จบเกม</button><button class="btn danger" data-act="gmReset">🔄 Reset</button></div>'
   + '</div>'+porterInlineControls()+'</div></div>'
   + '<div class="card section-gap"><div class="eyebrow">LIVE OVERVIEW</div><h2 style="margin:4px 0">GM Dashboard</h2><div class="hint">ภาพรวมผู้ป่วย อุปกรณ์ และการปฏิบัติงานทุก Zone</div></div>'
   + '<div class="grid cols-4">'
@@ -10311,6 +10472,7 @@ function animateDispatchExit(){
 
 async function handleClick(el){
   const act = el.dataset.act;
+  collapseCommunicationPanel();
   if(act==='join'){
     const name = val('joinName');
     const genderInput=document.querySelector('input[name="joinGender"]:checked');
@@ -10407,6 +10569,7 @@ async function handleClick(el){
   if(act==='gmOpenSceneSetup'){STATE.gmTab='scene';STATE.ui.patientReview=null;STATE._snapshot=null;saveLocalSession();render(true);return;}
   if(act==='gmSetupContinue'){STATE.gmTab='control';STATE._gmTabInitialized=true;STATE.ui.patientReview=null;saveLocalSession();render(true);return;}
   if(act==='gmStart'){ await gmStartGame(); return; }
+  if(act==='gmClockPause'){ await gmToggleClockPause(); return; }
   if(act==='gmEnd'){ await gmEndGame(); return; }
   if(act==='gmStartDebrief'){ await gmStartDebrief(); return; }
   if(act==='gmSavePreGame'){
