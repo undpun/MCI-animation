@@ -2,8 +2,18 @@
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>MCI 2D Complete Game · v6.5 · Radio–Backpack Alignment</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#0B0F14"/>
+<meta name="application-name" content="MCI 2D sim"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="MCI 2D sim"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="description" content="Mass-casualty incident 2D medical simulation"/>
+<link rel="manifest" href="./manifest.webmanifest"/>
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png"/>
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png"/>
+<title>MCI 2D sim · v6.5</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -11002,6 +11012,15 @@ function boot(){
 boot();
 })();
 
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('./service-worker.js',{scope:'./'}).catch(function(err){
+      console.warn('MCI 2D service worker registration failed',err);
+    });
+  });
+}
 </script>
 </body>
 </html>
