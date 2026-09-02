@@ -1242,6 +1242,226 @@ button,.btn,.tab,.switchbtn,select,input[type=checkbox],input[type=radio]{touch-
   .startgame-bag-dock{bottom:8px;left:calc(8px + env(safe-area-inset-left));transform:scale(.82);transform-origin:left bottom;}
 }
 
+
+
+/* ============================================================
+   iPhone Hospital / ALS layout patch v3
+   Requested: smaller doctor, controls outside road, stacked Supply–Map–Bag,
+   compact vehicle call/boarding UI, and Manifest–Interior–Supply layout.
+============================================================ */
+.vehicle-mobile-manifest,.vehicle-mobile-ready{display:none;}
+
+@media (max-width:600px) and (orientation:portrait){
+  /* 1) Hospital avatar: remove desktop minimum size that makes doctor huge on iPhone. */
+  .hospital-base-stage .start-world-player{
+    width:2.15%;
+    min-width:15px;
+    max-width:25px;
+  }
+  .hospital-base-stage .start-world-player img{max-height:36px;}
+  .hospital-base-stage .start-world-player b{font-size:5.5px;padding:2px 3px;margin-top:-2px;}
+  .hospital-base-stage .start-world-player.zone-head::before{top:-13px;font-size:5px;padding:2px 3px;}
+
+  /* 2) When Hospital Start has no player vehicles, reserve a left control rail.
+        Buttons are outside the map, so they cannot cover the road or vehicle hotspots. */
+  .hospital-base-stage.no-vehicle-start{
+    width:calc(100vw - 92px);
+    margin-left:92px;
+  }
+  .hospital-base-stage.no-vehicle-start .hospital-staging-ready{
+    position:fixed;
+    z-index:1820;
+    left:4px!important;
+    right:auto!important;
+    top:calc(env(safe-area-inset-top) + 64px)!important;
+    bottom:auto!important;
+    width:84px;
+    max-width:84px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    padding:6px;
+    border-radius:10px;
+    background:#07131af2;
+    box-shadow:0 10px 28px #0009;
+  }
+  .hospital-base-stage.no-vehicle-start .hospital-staging-ready .badge{
+    width:100%;justify-content:center;text-align:center;white-space:normal;
+    padding:4px 3px;font-size:7px;line-height:1.25;
+  }
+  .hospital-base-stage.no-vehicle-start .hospital-staging-ready .btn{
+    width:100%;min-height:38px;padding:6px 4px;font-size:9px;line-height:1.25;white-space:normal;
+  }
+
+  /* 4) Calling / boarding a vehicle: keep controls small and inside visible road area. */
+  .hospital-hotspot.vehicle span{
+    left:68%;font-size:8px;line-height:1.15;
+  }
+  .hospital-waiting-label{
+    top:-28px;
+    padding:3px 5px;
+    font-size:8px;
+    line-height:1.1;
+  }
+  .hospital-waiting-actions{
+    top:-15px;
+    gap:3px;
+  }
+  .hospital-waiting-actions .btn{
+    min-height:23px;
+    padding:3px 5px;
+    font-size:8px;
+    line-height:1;
+  }
+
+  /* 3) Supply open = real three-section mobile workspace.
+        Supply on top, map in the middle, bag on bottom. No panel overlays the map. */
+  body:has(.hospital-supply-float) .startgame-shell{
+    height:100dvh;
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding-top:env(safe-area-inset-top);
+  }
+  body:has(.hospital-supply-float) .startgame-topbar{order:1;flex:0 0 56px;position:sticky;top:0;z-index:1900;}
+  body:has(.hospital-supply-float) .hospital-supply-float{
+    order:2;
+    position:relative!important;
+    inset:auto!important;
+    flex:0 0 27dvh;
+    width:100%!important;
+    max-width:none!important;
+    max-height:none!important;
+    border-radius:0;
+    box-shadow:none;
+  }
+  body:has(.hospital-supply-float) .startgame-world-viewport{
+    order:3;
+    flex:0 0 auto;
+    height:auto!important;
+    min-height:0;
+    overflow:visible;
+  }
+  body:has(.hospital-supply-float) .hospital-base-stage{
+    width:100vw;
+    margin:0;
+  }
+  body:has(.hospital-supply-float) .hospital-base-stage.no-vehicle-start{
+    width:calc(100vw - 92px);
+    margin-left:92px;
+  }
+  body:has(.hospital-supply-float) .hospital-bag-float{
+    order:4;
+    position:relative!important;
+    inset:auto!important;
+    flex:0 0 27dvh;
+    width:100%!important;
+    max-width:none!important;
+    max-height:none!important;
+    border-radius:0;
+    box-shadow:none;
+  }
+  body:has(.hospital-supply-float) .startgame-bag-dock{display:none;}
+  body:has(.hospital-supply-float) .startgame-side-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+  /* ALS interior = Manifest / Interior / Supply stacked vertically. */
+  .vehicle-workspace,
+  .vehicle-workspace.compact{
+    display:flex!important;
+    flex-direction:column;
+    width:100%;
+    height:auto;
+    min-height:100%;
+    overflow:visible;
+    padding:0;
+    gap:0;
+  }
+  .vehicle-mobile-manifest{
+    display:block;
+    order:1;
+    flex:0 0 auto;
+    max-height:28dvh;
+    overflow:auto;
+    padding:9px 10px;
+    border-bottom:1px solid #ffffff22;
+    background:#0a161ef8;
+  }
+  .vehicle-mobile-manifest-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+  .vehicle-mobile-manifest-head b{font-size:10px;}
+  .vehicle-mobile-manifest .hint{font-size:7.5px;margin-top:2px;}
+  .vehicle-mobile-manifest .als-manifest-items{max-height:16dvh;overflow:auto;}
+  .vehicle-mobile-manifest .als-manifest-chip{font-size:7px;padding:3px 5px;}
+  .vehicle-mobile-manifest .als-manifest-chip img{width:18px;height:18px;}
+
+  .vehicle-interior-slot{
+    order:2;
+    flex:0 0 auto;
+    width:100%;
+  }
+  .vehicle-interior-slot .als-interior-stage{
+    width:100vw;
+    height:auto;
+    aspect-ratio:1672/941;
+    margin:0;
+  }
+  .vehicle-interior-slot .als-manifest,
+  .vehicle-interior-slot .als-controls{display:none!important;}
+
+  .vehicle-workspace .startgame-side-slot{
+    display:flex!important;
+    order:3;
+    width:100%;
+    height:auto;
+    min-height:0;
+  }
+  .vehicle-supply-exterior{
+    position:relative!important;
+    inset:auto!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:32dvh;
+    max-height:none;
+    border-radius:0;
+    box-shadow:none;
+    padding:9px;
+  }
+  .vehicle-supply-list{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    max-height:34dvh;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .vehicle-supply-tile{grid-template-rows:44px auto auto;padding:5px 3px;}
+  .vehicle-supply-tile img{width:42px;height:42px;}
+  .vehicle-supply-tile b{font-size:7px;}
+  .vehicle-supply-tile small{font-size:6.5px;}
+  .vehicle-mobile-ready{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-top:8px;
+    padding-top:8px;
+    border-top:1px solid #ffffff22;
+  }
+  .vehicle-mobile-ready b{font-size:9px;}
+  .vehicle-mobile-ready .crew-ready-list{margin:4px 0 0;}
+  .vehicle-mobile-ready-actions{display:flex;gap:5px;flex:0 0 auto;}
+  .vehicle-mobile-ready-actions .btn{min-height:34px;padding:5px 7px;font-size:8px;}
+
+  /* Once ready / en route, keep the state card visible but don't create a giant overlay. */
+  .vehicle-workspace.compact .vehicle-mobile-manifest{max-height:24dvh;}
+  .vehicle-workspace.compact .als-ready-wait{
+    top:8px;
+    width:min(300px,82%);
+    padding:8px 10px;
+  }
+  .vehicle-workspace.compact .als-ready-wait b{font-size:11px;}
+  .vehicle-workspace.compact .als-ready-wait .hint{font-size:7px;}
+}
+
 </style>
 </head>
 <body>
@@ -8220,7 +8440,7 @@ function viewStartFriendTransferModal(){
 function startgamePlayerOverlays(){return startgameBackpackDock()+viewStartBagModal()+viewStartFriendTransferModal()+viewHospitalSupplyModal()+viewFieldDialog()+viewToasts();
 }
 function viewHospitalBagSidebar(){
-  const open=!!STATE.ui.hospitalBagOpen||STATE.ui.startPanel==='BAG',mine=(STATE.carried&&STATE.carried[STATE.me.clientId])||{},used=carriedInventoryUnits(mine,STATE.resources),items=Object.keys(mine).filter(function(item){return Number(mine[item])>0;});
+  const open=!!STATE.ui.hospitalBagOpen||STATE.ui.startPanel==='BAG'||STATE.ui.startPanel==='HOSPITAL_SUPPLY',mine=(STATE.carried&&STATE.carried[STATE.me.clientId])||{},used=carriedInventoryUnits(mine,STATE.resources),items=Object.keys(mine).filter(function(item){return Number(mine[item])>0;});
   if(!open)return'';
   const rows=items.map(function(item){const qty=Number(mine[item])||0,w=resourceWeightUnits(item,STATE.resources);return'<button class="hospital-side-item hospital-bag-item" data-act="hospitalBagReturn" data-item="'+esc(item)+'" title="คืนของเข้าคลัง"><img src="'+esc(treatmentAssetPath(item))+'" alt=""><span><b>'+esc(item)+' ×'+qty+'</b><small>'+w+' หน่วย/ชิ้น</small></span><span class="badge ok">'+qty+'</span></button>';}).join('')||'<div class="empty" style="padding:20px 8px">กระเป๋ายังว่าง</div>';
   return'<div class="startgame-side-panel startgame-floating-panel hospital-bag-float"><div class="startgame-side-head"><div><b>🎒 กระเป๋าของ '+esc(STATE.me.name)+'</b><div class="hint">รวม '+used+'/'+PLAYER_BAG_CAPACITY+' · เหลือ '+Math.max(0,PLAYER_BAG_CAPACITY-used)+' หน่วย</div></div><div class="spacer"></div><button class="btn sm ghost" data-act="startBagClose">ปิด</button></div><div class="startgame-side-scroll">'+rows+'</div></div>';
@@ -8307,9 +8527,11 @@ function viewALSInterior(vehicle){
   const supplyRows=(STATE.resources||[]).map(function(r){const w=resourceWeightUnits(r.item,STATE.resources),full=used+w>START_VEHICLE_CAPACITY;return'<button class="vehicle-supply-tile" data-act="vehicleSupplyChange" data-vehicle="'+esc(vehicle.name)+'" data-item="'+esc(r.item)+'" data-delta="1" '+(locked||full?'disabled':'')+' title="'+(full?'พื้นที่รถไม่พอ':'เพิ่มเข้ารถ')+'"><img src="'+esc(treatmentAssetPath(r.item))+'" alt=""><b>'+esc(r.item)+'</b><small>'+w+' หน่วย</small></button>';}).join('');
   const crew=start.crew.map(function(name){return'<span class="crew-ready-chip '+(start.readyBy[name]?'ready':'')+'">'+(start.readyBy[name]?'✓ ':'○ ')+esc(name)+'</span>';}).join(''),myReady=!!start.readyBy[STATE.me.name];
   const compact=(myReady&&!travel)||travel,waitPanel=travel?'<div class="als-ready-wait"><b>🚑 รถกำลังเข้าสู่ Scene</b><div class="hint">Manifest ถูกล็อก · เหลือประมาณ '+arriveRemain+' วินาที</div></div>':'<div class="als-ready-wait"><b>✓ พร้อมออกปฏิบัติการแล้ว</b><div class="hint">รอ Commander สั่งออกรถ</div><button class="btn sm ghost" data-act="vehicleReadyToggle" data-vehicle="'+esc(vehicle.name)+'">ยกเลิกพร้อม</button></div>';
-  const supplyPanel=compact?'':'<div class="vehicle-supply-exterior"><div class="startgame-side-head"><div><b>เพิ่ม Supply ในรถ</b><div class="hint">กดรูปเพื่อเพิ่ม · '+used+'/'+START_VEHICLE_CAPACITY+' หน่วย</div></div></div><div id="vehicleSupplyList" class="vehicle-supply-list" data-preserve-scroll>'+supplyRows+'</div></div>';
+  const mobileReady='<div class="vehicle-mobile-ready"><div><b>สถานะ Crew</b><div class="crew-ready-list">'+crew+'</div></div><div class="vehicle-mobile-ready-actions"><button class="btn primary" data-act="vehicleReadyToggle" data-vehicle="'+esc(vehicle.name)+'">✓ พร้อมออกปฏิบัติการ</button><button class="btn ghost" data-act="vehicleLeave">ลงจากรถ</button></div></div>';
+  const supplyPanel=compact?'':'<div class="vehicle-supply-exterior"><div class="startgame-side-head"><div><b>เพิ่ม Supply ในรถ</b><div class="hint">กดรูปเพื่อเพิ่ม · '+used+'/'+START_VEHICLE_CAPACITY+' หน่วย</div></div></div><div id="vehicleSupplyList" class="vehicle-supply-list" data-preserve-scroll>'+supplyRows+'</div>'+mobileReady+'</div>';
+  const mobileManifest='<div class="vehicle-mobile-manifest"><div class="vehicle-mobile-manifest-head"><div><b>'+esc(vehicle.name)+' · อุปกรณ์บนรถ</b><div class="hint">'+used+'/'+START_VEHICLE_CAPACITY+' หน่วย · ที่นั่ง '+start.crew.length+'/'+START_VEHICLE_SEATS+'</div></div><span class="'+(locked?'manifest-lock':'hint')+'">'+(locked?'🔒 LOCKED':'แก้ไขได้')+'</span></div><div class="capacity-track"><span style="width:'+Math.min(100,used/START_VEHICLE_CAPACITY*100)+'%"></span></div><div class="als-manifest-items">'+items+'</div></div>';
   const interior='<div class="als-interior-stage">'+seats+(compact?waitPanel:'<div class="als-manifest"><div class="als-manifest-head"><div><b>Vehicle Manifest · '+esc(vehicle.name)+'</b><div class="hint">อุปกรณ์รถ '+used+'/'+START_VEHICLE_CAPACITY+' หน่วย · ที่นั่ง '+start.crew.length+'/'+START_VEHICLE_SEATS+' · กดอุปกรณ์เพื่อนำออก 1 ชิ้น</div></div><div class="spacer"></div><span class="'+(locked?'manifest-lock':'hint')+'">'+(locked?'🔒 MANIFEST LOCKED':'🔓 แก้ไขได้')+'</span></div><div class="capacity-track"><span style="width:'+Math.min(100,used/START_VEHICLE_CAPACITY*100)+'%"></span></div><div class="als-manifest-items">'+items+'</div></div><div class="als-controls"><div class="als-control-card als-crew-panel"><b>สถานะ Crew</b><div class="crew-ready-list">'+crew+'</div><button class="btn primary block" data-act="vehicleReadyToggle" data-vehicle="'+esc(vehicle.name)+'">✓ พร้อมออกปฏิบัติการ</button><button class="btn ghost block" style="margin-top:7px" data-act="vehicleLeave">ลงจากรถ</button></div></div>')+'</div>';
-  return'<div class="startgame-shell">'+startgameTopbar(vehicle.name,travel?'EN ROUTE TO SCENE':normU(vehicle.type)+' INTERIOR · WAITING DISPATCH')+'<div class="startgame-world-viewport"><div class="vehicle-workspace'+(compact?' compact':'')+'"><aside class="startgame-side-slot">'+supplyPanel+'</aside><main class="vehicle-interior-slot">'+interior+'</main></div></div>'+startgamePlayerOverlays()+'</div>';
+  return'<div class="startgame-shell">'+startgameTopbar(vehicle.name,travel?'EN ROUTE TO SCENE':normU(vehicle.type)+' INTERIOR · WAITING DISPATCH')+'<div class="startgame-world-viewport"><div class="vehicle-workspace'+(compact?' compact':'')+'">'+mobileManifest+'<aside class="startgame-side-slot">'+supplyPanel+'</aside><main class="vehicle-interior-slot">'+interior+'</main></div></div>'+startgamePlayerOverlays()+'</div>';
 }
 function viewFirstArrival(vehicle){const start=normalizedVehicleStart(vehicle||{}),remaining=Math.max(250,Number(start.arrivedAtMs||sharedNowMs()+START_TRAVEL_MS)-sharedNowMs()),scenario=startScenario(STATE.gc.scenarioId),type=normU(vehicle&&vehicle.type||'BLS'),name=vehicle&&vehicle.name||type;return'<div class="first-arrival-overlay"><div class="first-arrival-card"><div class="eyebrow">FIRST RESPONSE</div><h1>'+esc(name)+' กำลังเข้าสู่ Scene</h1><p class="hint">'+esc((scenario&&scenario.label)||'MCI')+' · GM ส่ง First Responder พร้อม '+esc(type)+' เข้าจุดเกิดเหตุ</p><div class="first-arrival-road"><img class="first-arrival-ambulance" style="animation-duration:'+remaining+'ms" src="'+esc(startVehicleAsset(vehicle||{type:'BLS'}))+'" alt="'+esc(type)+'"></div><div class="first-arrival-progress"><span style="animation-duration:'+remaining+'ms"></span></div><p class="hint" style="margin-top:12px">รถวิ่งจากซ้ายไปขวา · เมื่อจอดคุณจะลงในแผนผัง Scene อัตโนมัติ</p></div>'+startgameBackpackDock()+viewStartBagModal()+viewToasts()+'</div>'}
 function viewIncidentSceneFullscreen(scenario){
