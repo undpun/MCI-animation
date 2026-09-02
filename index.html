@@ -958,6 +958,116 @@ body.twoD-player-mode #app .twoD-work-drawer,body.twoD-player-mode #app .toasts,
 .zone-transition-host{position:fixed;z-index:5000;inset:0;display:grid;place-items:center;pointer-events:none;background:#071018;opacity:0;visibility:hidden;transition:opacity .18s ease,visibility 0s linear .18s}.zone-transition-host.show{opacity:1;visibility:visible;transition:opacity .16s ease}.zone-transition-card{display:flex;align-items:center;gap:11px;padding:12px 16px;border:1px solid #63eadb66;border-radius:13px;background:#0b171fe8;box-shadow:0 18px 55px #000b;color:#dffefa;font:800 11px/1.3 var(--font-display);letter-spacing:.03em}.zone-transition-card span{font-size:22px}.zone-transition-card small{display:block;margin-top:3px;color:#87aaa9;font:700 8px/1.2 var(--font-mono)}
 @media(max-width:1100px){.pregame-setting-grid,.pregame-setting-grid.second{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:800px){.field-build-grid,.gm-tent-cards{grid-template-columns:1fr 1fr}.field-logistics-form{grid-template-columns:1fr}.field-overflow-patient{width:42px;height:58px}}
+
+
+/* ============================================================
+   RESPONSIVE DEVICE PATCH — iPhone / iPad (2026-09)
+   Presentation-only overrides. No gameplay or Firebase logic changed.
+============================================================ */
+:root{
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-right:env(safe-area-inset-right,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --safe-left:env(safe-area-inset-left,0px);
+}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+body{min-height:100dvh;overscroll-behavior-y:none;}
+button,.btn,.tab,.switchbtn,select,input[type=checkbox],input[type=radio]{touch-action:manipulation;}
+@media (pointer:coarse){
+  .btn,.tab,.switchbtn,.head-zone-btn,.comm-chip,.comm-close,.sv-toggle{min-height:44px;}
+  input[type=text],input[type=password],input[type=number],select,textarea{min-height:44px;font-size:16px;}
+  input[type=checkbox],input[type=radio]{min-width:20px;min-height:20px;}
+}
+
+/* iPad / tablet */
+@media (max-width:1180px){
+  .main{max-width:100%;padding-left:max(14px,var(--safe-left));padding-right:max(14px,var(--safe-right));}
+  .topbar{padding-left:max(14px,var(--safe-left));padding-right:max(14px,var(--safe-right));padding-top:max(9px,var(--safe-top));}
+  .grid.cols-4{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .zone-flow-board{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .archive-list{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .archive-patient-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .resource-add-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .scenario-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .pregame-setting-grid,.pregame-setting-grid.second{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .commander-ready-grid{grid-template-columns:1fr;}
+  .vehicle-workspace{min-width:0;grid-template-columns:minmax(180px,26vw) minmax(0,1fr);width:100vw;max-width:100vw;}
+  .vehicle-interior-slot{min-width:0;overflow:hidden;}
+  .vehicle-interior-slot .als-interior-stage{max-width:100%;}
+  .scene-bootstrap-stage,.hospital-base-stage,.als-interior-stage{max-width:100vw;}
+}
+
+/* iPhone / compact */
+@media (max-width:600px){
+  body{padding-bottom:var(--safe-bottom);}
+  #app{min-height:100dvh;}
+  .main{padding:12px max(10px,var(--safe-right)) calc(56px + var(--safe-bottom)) max(10px,var(--safe-left));}
+  .topbar{position:sticky;min-height:0;gap:6px;padding:max(7px,var(--safe-top)) max(9px,var(--safe-right)) 7px max(9px,var(--safe-left));}
+  .brand-mark{width:30px;height:30px}.brand-copy strong{font-size:12px}.brand-copy small{display:none}
+  .mebadge{font-size:10px;gap:5px}.switchbtn{padding:6px 8px}.clockwrap{gap:5px;padding-top:5px}.timerbig{font-size:18px}.pill{padding:4px 7px;font-size:10px}
+  h1{font-size:22px} h2{font-size:17px}.station-hero h1{font-size:20px}.station-hero{align-items:flex-start}
+  .card{padding:12px;border-radius:9px}.card + .card{margin-top:10px}
+  .grid.cols-2,.grid.cols-3,.grid.cols-4,.zone-flow-board,.archive-list,.archive-patient-grid,.archive-player-grid,.resource-add-grid,.scenario-grid,.first-team-grid,.pregame-setting-grid,.pregame-setting-grid.second,.commander-ready-grid,.gm-tent-cards,.field-build-grid{grid-template-columns:1fr!important;}
+  .tabs,.timeline-filter,.archive-review-tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:3px;scrollbar-width:none}.tabs::-webkit-scrollbar,.timeline-filter::-webkit-scrollbar,.archive-review-tabs::-webkit-scrollbar{display:none}.tab{flex:0 0 auto;white-space:nowrap}
+  .flexrow{align-items:stretch}.flexrow>.btn{flex:1 1 auto}.btn.sm{min-height:40px}
+  table{font-size:12px}.activity-table-wrap,.resource-matrix-wrap,.phys-course-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .patient-card{padding:14px}.patient-card .pid{font-size:19px}.patient-card .pidrow{padding-top:14px}
+  .zone-people{grid-template-columns:repeat(auto-fill,minmax(48px,1fr));gap:8px 4px}.zone-box{min-height:138px;padding:9px}
+  .transfer-workflow,.transfer-staging-layout,.treatment-workspace{grid-template-columns:1fr!important}.transfer-step{padding:10px}.transfer-vehicle-grid{grid-template-columns:repeat(2,minmax(0,1fr));padding:10px 7px}.transfer-return-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.transfer-sendbar{bottom:calc(6px + var(--safe-bottom));z-index:8}
+  .treatment-overview{position:static}.treatment-actions{grid-template-columns:1fr}.resource-rack{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .clinical-vitals-grid,.clinical-vitals-grid.primary-only,.phys-preview-vitals{grid-template-columns:repeat(2,minmax(0,1fr))}.clinical-measure-actions,.clinical-gm-secret,.phys-preview-controls,.phys-preview-triage,.phys-response-grid,.phys-response-notes{grid-template-columns:1fr!important}
+  .personal-score-grid,.patient-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+  /* full-screen dialogs on phone */
+  .patient-review-overlay,.startgame-modal{padding:0;align-items:stretch;place-items:stretch}
+  .patient-review-dialog,.startgame-dialog{width:100%;max-width:none;max-height:100dvh;height:100dvh;border-radius:0;border-left:0;border-right:0}
+  .patient-review-top,.startgame-dialog-head{padding-top:max(12px,var(--safe-top))}
+  .patient-review-body{padding:12px max(10px,var(--safe-right)) calc(20px + var(--safe-bottom)) max(10px,var(--safe-left))}
+
+  /* communication becomes a bottom sheet */
+  #communicationHost{right:max(5px,var(--safe-right));bottom:calc(10px + var(--safe-bottom))}
+  .comm-panel,.comm-panel.command-view,.comm-panel.monitor-view{left:max(6px,var(--safe-left));right:max(6px,var(--safe-right));bottom:calc(72px + var(--safe-bottom));height:min(72dvh,650px);border-radius:14px;width:auto;max-width:none}
+  .comm-layout{grid-template-columns:92px minmax(0,1fr)}.comm-zone-tab{padding:8px 5px}.comm-zone-tab b{font-size:9px}.comm-message{max-width:94%;font-size:11px}.comm-composer{padding-bottom:max(9px,var(--safe-bottom))}
+  .comm-input-row input{font-size:16px}
+
+  /* map/viewer floats avoid home indicator */
+  #sceneViewerHost{left:max(6px,var(--safe-left));bottom:calc(8px + var(--safe-bottom));width:min(248px,calc(100vw - 18px))}
+  #sceneViewerHost #sceneViewerMap{height:190px}
+  .toastwrap{left:max(8px,var(--safe-left));right:max(8px,var(--safe-right));bottom:calc(10px + var(--safe-bottom));max-width:none}.toast{width:100%}
+
+  /* join screen */
+  .joinwrap{min-height:100dvh;padding:max(8px,var(--safe-top)) max(8px,var(--safe-right)) max(8px,var(--safe-bottom)) max(8px,var(--safe-left));align-items:flex-start}
+  .joincard.command-entry{display:block;max-width:none;border-radius:13px}.join-brief{min-height:210px;padding:22px 18px}.command-logo{width:52px;height:52px}.join-kicker{margin-top:18px}.join-brief h1{font-size:28px}.join-brief p{font-size:12px}.mission-data{margin-top:18px}.join-form{padding:22px 18px 26px}.gender-choice{min-height:48px}
+
+  /* Start-game scenes: preserve artwork ratio, allow vertical letterboxing */
+  .startgame-shell{height:100dvh}.startgame-topbar{height:auto;min-height:52px;padding:max(7px,var(--safe-top)) max(8px,var(--safe-right)) 7px max(8px,var(--safe-left));gap:5px}.startgame-pill{padding:5px 7px;font-size:8px}.startgame-world-viewport{height:calc(100dvh - 52px);overflow:auto;place-items:center}
+  .hospital-base-stage,.als-interior-stage,.scene-bootstrap-stage{width:100vw;max-width:100vw;height:auto;min-height:0;flex:0 0 auto;background-size:contain;background-repeat:no-repeat;background-position:center}
+  .hospital-help{max-width:92%;font-size:7px}.hospital-wait-status{max-width:88%;font-size:7px}
+  .hospital-supply-float{left:max(6px,var(--safe-left));right:max(6px,var(--safe-right));top:auto;bottom:calc(8px + var(--safe-bottom));width:auto;max-height:62dvh}.hospital-bag-float{left:max(6px,var(--safe-left));right:max(6px,var(--safe-right));bottom:calc(72px + var(--safe-bottom));width:auto;max-height:55dvh}
+  .startgame-bag-dock{left:max(7px,var(--safe-left));bottom:calc(7px + var(--safe-bottom))}.startgame-bag-gauge{width:42px;height:42px}
+  .vehicle-workspace,.vehicle-workspace.compact{display:block;min-width:0;width:100vw;height:calc(100dvh - 52px);padding:6px;overflow:auto}.vehicle-workspace>.startgame-side-slot{height:auto;max-height:34dvh;margin-bottom:6px}.vehicle-interior-slot{height:auto}.vehicle-interior-slot .als-interior-stage{width:100%;height:auto}.vehicle-supply-exterior{max-height:32dvh}.vehicle-supply-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+  /* 2D overlay controls */
+  .twoD-work-drawer{left:max(6px,var(--safe-left));right:max(6px,var(--safe-right));top:calc(54px + var(--safe-top));bottom:calc(6px + var(--safe-bottom));width:auto;border-radius:13px}
+  .twoD-work-drawer.minimized{left:auto;width:min(260px,calc(100vw - 16px))}
+  .player-howto-dock{left:max(68px,calc(var(--safe-left) + 68px));top:calc(8px + var(--safe-top))}
+  .vehicle-capacity-hud{top:calc(6px + var(--safe-top));max-width:calc(100vw - 105px);overflow-x:auto;pointer-events:auto}
+  .parking-logistics-dock{left:max(6px,var(--safe-left));right:max(6px,var(--safe-right));bottom:calc(7px + var(--safe-bottom));transform:none;max-width:none;overflow-x:auto;justify-content:flex-start}
+  .twoD-build-badge{left:max(7px,var(--safe-left));bottom:calc(7px + var(--safe-bottom))}
+
+  /* Scene editor */
+  #scRoot{height:calc(100dvh - 120px);min-height:500px}.sc-search{padding:7px}.sc-search-row{gap:5px}.sc-search-row .btn{min-width:64px;padding-inline:8px}#scRoot .sc-toolbar{padding:6px}.sc-float-panel{max-width:calc(100vw - 16px)}
+}
+
+/* phone landscape: prioritize playable canvas / scene over chrome */
+@media (max-height:520px) and (orientation:landscape){
+  .topbar{position:relative}.clockwrap{width:auto;order:initial;border-top:0;padding-top:0}.pill{display:none}.timerbig{font-size:17px}
+  .startgame-topbar{min-height:44px;padding:4px max(8px,var(--safe-right)) 4px max(8px,var(--safe-left))}.startgame-world-viewport{height:calc(100dvh - 44px)}
+  .join-brief{display:none}.joincard.command-entry{max-width:520px}.join-form{padding:16px 20px}
+  .comm-panel,.comm-panel.command-view,.comm-panel.monitor-view{height:calc(100dvh - 62px);bottom:calc(54px + var(--safe-bottom))}
+  .hospital-supply-float{max-height:78dvh;width:min(320px,48vw)}.hospital-bag-float{max-height:70dvh;width:min(280px,44vw)}
+  .twoD-work-drawer{top:calc(46px + var(--safe-top))}
+}
 </style>
 </head>
 <body>
