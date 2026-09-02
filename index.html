@@ -8080,7 +8080,265 @@ function collapseWindowsBeforeWalk(){
  transportSend('walkStart',{scene:typeof sceneKey==='function'?sceneKey():active});
 }
 `;
-  source=source.replace('</style>',morgueCss+'</style>');
+  source=source.replace('</style>',morgueCss+'
+
+/* ============================================================
+   iPhone portrait refinement patch v4
+   Scope: ONLY iPhone portrait. iPad / notebook remain untouched.
+   Goals: always-center map, horizontal 1/3-screen supply/bag rails,
+   smaller ALS call/boarding labels, horizontal ALS supply rail.
+============================================================ */
+@media (max-width:600px) and (orientation:portrait){
+  /* 1) MAP MUST ALWAYS STAY CENTERED — never shift it for side controls. */
+  .hospital-base-stage,
+  .hospital-base-stage.no-vehicle-start,
+  body:has(.hospital-supply-float) .hospital-base-stage,
+  body:has(.hospital-supply-float) .hospital-base-stage.no-vehicle-start{
+    width:100vw!important;
+    max-width:100vw!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+    left:auto!important;
+    right:auto!important;
+  }
+
+  /* Keep ready / Command controls away from the road while map remains centered.
+     Use a compact rail above the scene rather than stealing map width. */
+  .hospital-base-stage.no-vehicle-start .hospital-staging-ready{
+    position:fixed!important;
+    z-index:1820;
+    left:max(6px,env(safe-area-inset-left))!important;
+    right:auto!important;
+    top:calc(env(safe-area-inset-top) + 57px)!important;
+    bottom:auto!important;
+    width:74px!important;
+    max-width:74px!important;
+    gap:4px!important;
+    padding:5px!important;
+  }
+  .hospital-base-stage.no-vehicle-start .hospital-staging-ready .badge{
+    font-size:6px!important;
+    padding:3px 2px!important;
+    line-height:1.15!important;
+  }
+  .hospital-base-stage.no-vehicle-start .hospital-staging-ready .btn{
+    min-height:31px!important;
+    padding:4px 3px!important;
+    font-size:7.5px!important;
+    line-height:1.15!important;
+  }
+
+  /* 2) HOSPITAL SUPPLY = horizontal rail, roughly 1/3 iPhone height.
+        Icons are the focus; remove nonessential copy and scroll left/right. */
+  body:has(.hospital-supply-float) .hospital-supply-float{
+    flex:0 0 25dvh!important;
+    min-height:150px;
+    max-height:190px!important;
+    padding:7px 8px!important;
+  }
+  body:has(.hospital-supply-float) .hospital-supply-float .startgame-side-head{
+    flex:0 0 auto;
+    padding-bottom:5px;
+  }
+  body:has(.hospital-supply-float) .hospital-supply-float .startgame-side-head b{font-size:9px!important;}
+  body:has(.hospital-supply-float) .hospital-supply-float .startgame-side-head .hint{display:none!important;}
+  body:has(.hospital-supply-float) #hospitalSupplyList,
+  body:has(.hospital-supply-float) .hospital-supply-grid-large{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    align-items:stretch!important;
+    gap:6px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch;
+    scroll-snap-type:x proximity;
+    scrollbar-width:thin;
+    padding:6px 2px 5px!important;
+  }
+  body:has(.hospital-supply-float) .hospital-supply-tile,
+  body:has(.hospital-supply-float) .hospital-side-item{
+    flex:0 0 calc((100vw - 28px)/3)!important;
+    width:calc((100vw - 28px)/3)!important;
+    min-width:calc((100vw - 28px)/3)!important;
+    max-width:calc((100vw - 28px)/3)!important;
+    min-height:96px!important;
+    scroll-snap-align:start;
+    padding:5px 3px!important;
+  }
+  body:has(.hospital-supply-float) .hospital-supply-tile{
+    display:grid!important;
+    grid-template-rows:58px auto!important;
+    align-content:center;
+  }
+  body:has(.hospital-supply-float) .hospital-supply-tile img,
+  body:has(.hospital-supply-float) .hospital-side-item img{
+    width:56px!important;
+    height:56px!important;
+    max-width:56px!important;
+    max-height:56px!important;
+    object-fit:contain!important;
+    justify-self:center;
+  }
+  body:has(.hospital-supply-float) .hospital-supply-tile b,
+  body:has(.hospital-supply-float) .hospital-side-item b{
+    font-size:7px!important;
+    line-height:1.15!important;
+    text-align:center!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    width:100%;
+  }
+  body:has(.hospital-supply-float) .hospital-supply-tile small,
+  body:has(.hospital-supply-float) .hospital-side-item small{display:none!important;}
+
+  /* Bag = same horizontal one-third rail at the bottom. */
+  body:has(.hospital-supply-float) .hospital-bag-float{
+    flex:0 0 23dvh!important;
+    min-height:140px;
+    max-height:180px!important;
+    padding:7px 8px!important;
+  }
+  body:has(.hospital-supply-float) .hospital-bag-float .startgame-side-head{
+    flex:0 0 auto;
+    padding-bottom:5px;
+  }
+  body:has(.hospital-supply-float) .hospital-bag-float .startgame-side-head b{font-size:9px!important;}
+  body:has(.hospital-supply-float) .hospital-bag-float .startgame-side-head .hint{display:none!important;}
+  body:has(.hospital-supply-float) .hospital-bag-float .startgame-side-scroll{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    gap:6px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch;
+    scroll-snap-type:x proximity;
+    padding:6px 2px 5px!important;
+  }
+  body:has(.hospital-supply-float) .hospital-bag-item{
+    flex:0 0 calc((100vw - 28px)/3)!important;
+    width:calc((100vw - 28px)/3)!important;
+    min-width:calc((100vw - 28px)/3)!important;
+    max-width:calc((100vw - 28px)/3)!important;
+    min-height:96px!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:58px auto!important;
+    justify-items:center!important;
+    align-content:center!important;
+    gap:3px!important;
+    scroll-snap-align:start;
+  }
+  body:has(.hospital-supply-float) .hospital-bag-item .badge{
+    font-size:7px!important;
+    padding:2px 5px!important;
+  }
+
+  /* The middle map remains its natural 16:9 ratio and centered between rails. */
+  body:has(.hospital-supply-float) .startgame-world-viewport{
+    display:flex!important;
+    justify-content:center!important;
+    align-items:center!important;
+    width:100%!important;
+    overflow:hidden!important;
+  }
+
+  /* 3) ALS_1 / call vehicle / boarding labels — significantly smaller. */
+  .hospital-hotspot.vehicle span{
+    left:66%!important;
+    font-size:5.5px!important;
+    line-height:1.05!important;
+    font-weight:700!important;
+    letter-spacing:-.02em;
+  }
+  .hospital-waiting-label{
+    top:-22px!important;
+    padding:2px 4px!important;
+    font-size:5.5px!important;
+    line-height:1.05!important;
+    font-weight:700!important;
+  }
+  .hospital-waiting-actions{
+    top:-11px!important;
+    gap:2px!important;
+  }
+  .hospital-waiting-actions .btn{
+    min-height:18px!important;
+    padding:2px 4px!important;
+    font-size:5.5px!important;
+    line-height:1!important;
+    border-radius:5px!important;
+  }
+
+  /* 4) ALS interior: top manifest remains compact/horizontal. */
+  .vehicle-mobile-manifest{
+    max-height:22dvh!important;
+    padding:6px 8px!important;
+  }
+  .vehicle-mobile-manifest .als-manifest-items{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    gap:5px!important;
+    max-height:none!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:3px;
+  }
+  .vehicle-mobile-manifest .als-manifest-chip{
+    flex:0 0 auto;
+    font-size:6.5px!important;
+    white-space:nowrap;
+  }
+
+  /* ALS bottom Supply = one-row horizontal carousel, cards ~1/3 screen. */
+  .vehicle-supply-exterior{
+    min-height:25dvh!important;
+    max-height:30dvh!important;
+    padding:7px 8px!important;
+    overflow:hidden!important;
+  }
+  .vehicle-supply-exterior .startgame-side-head{padding-bottom:5px!important;}
+  .vehicle-supply-exterior .startgame-side-head b{font-size:9px!important;}
+  .vehicle-supply-exterior .startgame-side-head .hint{display:none!important;}
+  .vehicle-supply-list{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    align-items:stretch!important;
+    gap:6px!important;
+    max-height:none!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch;
+    scroll-snap-type:x proximity;
+    scrollbar-width:thin;
+    padding:5px 2px!important;
+  }
+  .vehicle-supply-tile{
+    flex:0 0 calc((100vw - 28px)/3)!important;
+    width:calc((100vw - 28px)/3)!important;
+    min-width:calc((100vw - 28px)/3)!important;
+    max-width:calc((100vw - 28px)/3)!important;
+    min-height:88px!important;
+    grid-template-rows:52px auto!important;
+    padding:4px 3px!important;
+    scroll-snap-align:start;
+  }
+  .vehicle-supply-tile img{width:50px!important;height:50px!important;}
+  .vehicle-supply-tile b{font-size:6.5px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;}
+  .vehicle-supply-tile small{display:none!important;}
+
+  /* Ready controls remain visible below the horizontal supply rail. */
+  .vehicle-mobile-ready{
+    flex:0 0 auto!important;
+    margin-top:4px!important;
+    padding-top:5px!important;
+  }
+  .vehicle-mobile-ready b{font-size:7.5px!important;}
+  .vehicle-mobile-ready .crew-ready-list{display:none!important;}
+  .vehicle-mobile-ready-actions .btn{min-height:28px!important;padding:4px 6px!important;font-size:7px!important;}
+}
+</style>');
   source=source.replace('function renderPrimary(){',morgueHelper+'function renderPrimary(){');
   source=source.replace(morgueHelper.slice(morgueHelper.indexOf('function collapseWindowsBeforeWalk()')),keepBagWalkHelper);
   source=source.replace('  drawPath(stage,pts);','  collapseWindowsBeforeWalk();\n  drawPath(stage,pts);');
