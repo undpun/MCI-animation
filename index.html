@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="theme-color" content="#0b1217"/>
-<title>MCI 2D Complete Game · v6.6 · iPhone &amp; iPad Responsive</title>
+<title>MCI 2D Complete Game · v6.7 · iPhone Compact UI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -46,6 +46,8 @@ body{
   color:var(--ink);
   font-family:var(--font-body);
   -webkit-font-smoothing:antialiased;
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
 }
 ::selection{background:var(--accent-dim);color:#fff;}
 button{font-family:inherit;}
@@ -970,6 +972,21 @@ body.twoD-player-mode #app .twoD-work-drawer,body.twoD-player-mode #app .toasts,
   .subrow{gap:7px}.subrow .btn{flex:1 1 46%}.actionGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .comm-panel,.comm-panel.command-view,.comm-panel.monitor-view{bottom:max(76px,calc(env(safe-area-inset-bottom) + 76px));height:min(70dvh,570px)}
   .howto-card{padding-bottom:env(safe-area-inset-bottom)}
+  .startgame-shell{height:100dvh;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  .startgame-topbar{height:calc(43px + env(safe-area-inset-top));min-height:0;gap:5px;padding:calc(5px + env(safe-area-inset-top)) max(7px,env(safe-area-inset-right)) 5px max(7px,env(safe-area-inset-left))}
+  .startgame-brand{font-size:10px;line-height:1;letter-spacing:.04em}.startgame-brand small{display:none}
+  .startgame-pill{padding:4px 6px;border-radius:6px;font-size:7px;line-height:1.15;max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .startgame-topbar .btn{min-height:27px;padding:4px 7px;border-radius:6px;font-size:8px;white-space:nowrap}
+  .startgame-world-viewport{height:calc(100dvh - 43px - env(safe-area-inset-top))}
+  .hospital-base-stage{width:min(100vw,calc((100dvh - 43px - env(safe-area-inset-top))*1.77683))}
+  .hospital-wait-status{top:3%;max-width:72%;padding:4px 6px;border-radius:6px;font-size:6px;line-height:1.2}
+  .hospital-help{display:none}
+  .hospital-staging-ready{left:1.5%;right:1.5%;bottom:2%;gap:4px;padding:4px;border-radius:7px;justify-content:flex-end}
+  .hospital-staging-ready .badge{margin-right:auto;padding:3px 5px;font-size:6.5px;white-space:nowrap}
+  .hospital-staging-ready .btn{min-height:28px;padding:4px 7px;border-radius:6px;font-size:7.5px;line-height:1.1;white-space:nowrap}
+  .hospital-staging-ready .btn.primary{min-width:0}
+  .hospital-supply-float,.hospital-bag-float{left:7px;right:7px;width:auto;max-height:70dvh;font-size:10px}
+  .hospital-staging-ready~.start-world-players .hospital-player-marker b{font-size:6px}
 }
 </style>
 </head>
@@ -7566,7 +7583,7 @@ function patchTwoDFrameSource(source){
 .bagItemRow.bagReturnable{cursor:pointer;border-color:#62e5d466}.bagItemRow.bagReturnable:hover{background:#4fb26818;box-shadow:0 0 0 2px #62e5d422}.bagItemRow.bagReturnable .bagItemMeta small::after{content:" · กดเพื่อเดินไปคืนที่ตู้";color:#75dfd1}
 .doctor.zoneHeadDoctor{animation:mciZoneHeadGlow 1.35s ease-in-out infinite!important}@keyframes mciZoneHeadGlow{0%,100%{filter:drop-shadow(0 0 6px #ffe66f) drop-shadow(0 8px 5px #0008)}50%{filter:drop-shadow(0 0 17px #fff27f) drop-shadow(0 0 8px #ffbd2e) drop-shadow(0 8px 5px #0008)}}
 @media(max-width:1024px){
- html,body,#app{width:100%;height:100%;height:100dvh;overscroll-behavior:none}
+ html,body,#app{width:100%;height:100%;height:100dvh;overscroll-behavior:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
  #globalbar{left:max(6px,env(safe-area-inset-left));right:max(6px,env(safe-area-inset-right));top:max(5px,env(safe-area-inset-top));height:50px;gap:5px}
  .hud{padding:5px 7px;font-size:8px;border-radius:9px}.hud b{font-size:12px}.gbtn{padding:7px 8px;border-radius:9px;font-size:10px}
  .titlePlate{left:16px;top:62px;padding:6px 9px;font-size:11px}.toast{bottom:max(12px,env(safe-area-inset-bottom));max-width:calc(100vw - 24px);text-align:center}
@@ -7657,7 +7674,7 @@ function peerEl(key,gender){const e=document.createElement('div');e.className='d
   source=source.replace(oldPeer,newPeer);
   source=source.replace("function names(){document.querySelectorAll('.doctor:not(.remoteDoctor)').forEach(d=>{d.classList.toggle('femaleDoctor',", "function names(){const isHead=(snap.headNames||[]).indexOf(snap.name)>-1;document.querySelectorAll('.doctor:not(.remoteDoctor)').forEach(d=>{d.classList.toggle('zoneHeadDoctor',isHead);d.classList.toggle('femaleDoctor',");
   source=source.replace("e.classList.toggle('femaleDoctor',String(q.gender||'MALE').toUpperCase()==='FEMALE');e.dataset.peerName", "e.classList.toggle('zoneHeadDoctor',(snap.headNames||[]).indexOf(q.name)>-1);e.classList.toggle('femaleDoctor',String(q.gender||'MALE').toUpperCase()==='FEMALE');e.dataset.peerName");
-  source=source.replace('MCI 2D Complete Game v5.5 · Mobility + Cooperative Treatment','MCI 2D Complete Game v6.6 · iPhone & iPad Responsive');
+  source=source.replace('MCI 2D Complete Game v5.5 · Mobility + Cooperative Treatment','MCI 2D Complete Game v6.7 · iPhone Compact UI');
   source=source.replace("setInterval(()=>emit(false),80);", "document.addEventListener('click',()=>send('uiOpen',{}),true);setInterval(()=>emit(false),80);");
   return source;
 }
