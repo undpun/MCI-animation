@@ -8,7 +8,7 @@ function key(n){
  if(n.id)return '#'+n.id;
  // Managed avatar layers cannot be reused as unrelated DIVs when entering a vehicle.
  if(n.matches('.start-world-players'))return 'managed:start-world-players';
- for(const a of ['data-start-world','data-start-client','data-id','data-patient','data-tent-id','data-vehicle','data-name'])if(n.hasAttribute(a))return n.tagName+'|'+a+'='+n.getAttribute(a);
+ for(const a of ['data-field-slot','data-start-world','data-start-client','data-id','data-patient','data-tent-id','data-vehicle','data-name'])if(n.hasAttribute(a))return n.tagName+'|'+a+'='+n.getAttribute(a);
  if(n.hasAttribute('data-act'))return n.tagName+'|act='+n.getAttribute('data-act')+'|'+['data-item','data-zone','data-id','data-slot','data-tab','data-name','data-color','data-station'].map(a=>n.getAttribute(a)||'').join('|');
  return '';
 }

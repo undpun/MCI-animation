@@ -1,4 +1,4 @@
-const CACHE_VERSION='mci-2d-v6.7-phone-1';
+const CACHE_VERSION='mci-2d-v6.7.1-map-1';
 const APP_SHELL=[
   './',
   './index.html',

@@ -35,7 +35,8 @@ function ensureTools(){
 }
 function refresh(){
  if(document.body.classList.contains('mci-frame')){if(current&&isPhone())fitFrame(current);if(toolbar)toolbar.hidden=!isPhone();return;}
- current=document.querySelector('[data-start-world]');
+ const previous=current;current=document.querySelector('[data-start-world]');
+ if(current&&current!==previous){const viewport=current.closest('.startgame-world-viewport'),shell=current.closest('.startgame-shell');if(viewport){viewport.scrollLeft=0;viewport.scrollTop=0;}if(shell)shell.scrollTop=0;}
  if(current){const c=state(current),viewport=current.closest('.startgame-world-viewport');if(isPhone()){current.style.setProperty('--mci-world-width',Math.round(viewport.clientWidth*c.zoom)+'px');}else current.style.removeProperty('--mci-world-width');}
  if(current||toolbar)ensureTools();
 }

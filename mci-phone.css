@@ -1,4 +1,6 @@
-/* v6.7: phone-only gameplay layout; guide is shared by every screen size. */
+/* v6.7.1: phone-only gameplay layout; guide is shared by every screen size. */
+.scene-slot.occupied,.scene-slot.occupied:hover{border-color:transparent!important;background:transparent!important;box-shadow:none!important;overflow:visible;cursor:default;pointer-events:none}
+.scene-slot.occupied .scene-slot-tent{pointer-events:auto}
 .mci-map-tools{display:none}
 .mci-guide-backdrop{position:absolute;inset:0;background:#031019dc;backdrop-filter:blur(8px)}
 .mci-guide{position:absolute;inset:0;margin:auto;width:min(760px,calc(100% - 32px));height:max-content;max-height:calc(100% - 32px);display:flex;flex-direction:column;overflow:hidden;border:1px solid #385665;border-radius:24px;background:#101e29;color:#edf8ff;box-shadow:0 30px 100px #0009;font-family:system-ui,sans-serif}
@@ -83,4 +85,17 @@
 @media(max-width:1000px) and (max-height:500px) and (pointer:coarse){
   .twoD-work-drawer{left:auto!important;right:max(6px,env(safe-area-inset-right))!important;top:calc(60px + env(safe-area-inset-top))!important;width:min(56vw,480px)!important;bottom:6px!important}
   .mci-guide{width:min(760px,calc(100% - 60px))}.mci-guide header,.mci-guide footer{padding:8px 16px}.mci-guide-scroll{padding:12px 20px}.mci-guide-number{display:none}.mci-guide-route{margin-bottom:12px}.mci-guide h2{font-size:23px;margin-bottom:8px}
+}
+/* Main map owns the remaining screen space. Supply and bag are separate shelves. */
+@media(max-width:600px), (max-width:1000px) and (max-height:500px) and (pointer:coarse){
+  body .startgame-shell > .startgame-world-viewport:has([data-start-world]){
+    order:2!important;display:flex!important;flex-direction:column!important;
+    flex:1 0 auto!important;min-height:calc(100vw * .5625)!important;
+    height:auto!important;max-height:none!important;overflow:auto!important;
+    justify-content:flex-start!important;align-items:flex-start!important;
+  }
+  body .startgame-shell .hospital-base-stage,body .startgame-shell .scene-bootstrap-stage{margin:auto 0!important;flex-shrink:0!important}
+  body:has(.hospital-supply-float) .startgame-shell > .hospital-supply-float{order:1!important;flex:0 0 auto!important;max-height:clamp(148px,25dvh,210px)!important;overflow:auto!important}
+  body:has(.hospital-bag-float) .startgame-shell > .hospital-bag-float{order:3!important;flex:0 0 auto!important;max-height:clamp(138px,23dvh,190px)!important;overflow:auto!important}
+  body .startgame-shell > .mci-ready-dock{order:4!important}
 }
