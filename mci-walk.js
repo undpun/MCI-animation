@@ -33,7 +33,7 @@
   const px=unit==='%'?x*16:x,py=unit==='%'?y*9:y,prev=s.prev;s.prev={x:px,y:py};
   if(!prev)return;
   const dx=px-prev.x,dy=py-prev.y,d=Math.hypot(dx,dy);
-  if(d>.02){s.distance+=d;s.facing=direction(dx,dy,s.facing);s.observed=true;s.until=now+160;active.add(el);draw(s,true);ensure();}
+  if(d>.02){s.distance+=d;s.facing=direction(dx,dy,s.facing);s.observed=true;s.until=now+280;active.add(el);draw(s,true);ensure();}
  }
  function reset(el){const s=actors.get(el);stop(el);if(s){s.prev=null;s.distance=0;}}
  function detach(el){stop(el);const s=actors.get(el);if(s&&s.sprite)s.sprite.remove();if(el&&el.classList)el.classList.remove('mci-walk-ready');actors.delete(el);}
