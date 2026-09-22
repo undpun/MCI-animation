@@ -4,5 +4,9 @@
 .mci-walk-ready.start-world-player>b{position:relative;z-index:2}
 .mci-walk-ready.doctor::before{visibility:hidden!important}
 .doctor>.mci-walk-sprite{width:60px;height:90px;top:-6px;aspect-ratio:auto}
+/* MCIMotion already buffers/interpolates remote coordinates. A second CSS
+   transition makes the feet lag behind the rendered path and look like
+   floating/sliding to other players. */
+.start-world-player.remote,.doctor.remoteDoctor{transition:none!important;will-change:left,top}
 .start-world-player.me>.mci-walk-sprite{filter:drop-shadow(0 0 4px #63eadb88)}
 .start-world-player.remote:hover>.mci-walk-sprite{filter:drop-shadow(0 0 6px #63eadb)}
