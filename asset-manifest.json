@@ -1,6 +1,8 @@
 {
   "version": "6.6.0",
   "assets": [
+    "assets-walk-v68/doctor-female-walk.webp",
+    "assets-walk-v68/doctor-male-walk.webp",
     "assets-v66/characters/doctor_female_top.webp",
     "assets-v66/characters/doctor_male_top.webp",
     "assets-v66/characters/patient_lying_female_alive.webp",

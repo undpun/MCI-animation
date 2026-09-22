@@ -1,0 +1,8 @@
+/* v6.8 Visual-only walkers. Actor position, size, hitbox and click target stay owned by the game. */
+.mci-walk-sprite{position:absolute;pointer-events:none;display:block;left:50%;top:0;width:100%;aspect-ratio:2/3;transform:translateX(-50%);background-repeat:no-repeat;background-size:500% 400%;background-position:0 0;z-index:1}
+.mci-walk-ready.start-world-player>img{visibility:hidden!important}
+.mci-walk-ready.start-world-player>b{position:relative;z-index:2}
+.mci-walk-ready.doctor::before{visibility:hidden!important}
+.doctor>.mci-walk-sprite{width:60px;height:90px;top:-6px;aspect-ratio:auto}
+.start-world-player.me>.mci-walk-sprite{filter:drop-shadow(0 0 4px #63eadb88)}
+.start-world-player.remote:hover>.mci-walk-sprite{filter:drop-shadow(0 0 6px #63eadb)}

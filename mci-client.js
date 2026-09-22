@@ -45,20 +45,25 @@ window.MCIStableDOM={patch:function(root,html){const t=document.createElement('t
 /* Buffered interpolation works in either parent or embedded game frame. */
 const tracks=new Map();let animation=0;
 function tick(now){
- let active=false;for(const [el,t] of tracks){if(!el.isConnected){tracks.delete(el);continue;}
+ let active=false;for(const [el,t] of tracks){if(!el.isConnected){tracks.delete(el);if(window.MCIWalk)MCIWalk.detach(el);continue;}
   const renderAt=now-120;while(t.samples.length>2&&t.samples[1].time<renderAt)t.samples.shift();
   const a=t.samples[0],b=t.samples[1]||a,ratio=b.time>a.time?Math.max(0,Math.min(1,(renderAt-a.time)/(b.time-a.time))):1;
   const x=a.x+(b.x-a.x)*ratio,y=a.y+(b.y-a.y)*ratio;el.style.left=x+t.unit;el.style.top=y+t.unit;
+  t.x=x;t.y=y;if(window.MCIWalk)MCIWalk.observe(el,x,y,t.unit,now);
   if(renderAt<b.time)active=true;
  }
  animation=active?requestAnimationFrame(tick):0;
 }
 window.MCIMotion={push:function(el,x,y,stamp,unit){
- let t=tracks.get(el);const time=performance.now();if(t&&t.stamp===stamp)return;
- if(!t||t.unit!==unit){t={unit:unit,stamp:stamp,samples:[{x:x,y:y,time:time-120}]};tracks.set(el,t);}
- t.stamp=stamp;t.samples.push({x:x,y:y,time:time});if(t.samples.length>20)t.samples.shift();el.style.transition='none';
+ if(!Number.isFinite(x)||!Number.isFinite(y))return;
+ let t=tracks.get(el);const time=performance.now(),changed=t&&(t.unit!==unit||t.parent!==el.parentNode);
+ if(t&&!changed&&(t.stamp===stamp||Number(stamp)<Number(t.stamp)))return;
+ if(!t||changed){t={unit:unit,parent:el.parentNode,stamp:stamp,x:x,y:y,received:time,samples:[{x:x,y:y,time:time-120}]};tracks.set(el,t);if(window.MCIWalk)MCIWalk.reset(el);}
+ if(time-t.received>350){t.samples=[{x:t.x,y:t.y,time:time-120},{x:x,y:y,time:time+80}];}
+ else{const last=t.samples[t.samples.length-1];t.samples.push({x:x,y:y,time:Math.max(time,last.time+1)});}
+ t.received=time;t.stamp=stamp;if(t.samples.length>20)t.samples.shift();el.style.transition='none';
  if(!animation)animation=requestAnimationFrame(tick);
-}};
+},forget:function(el){tracks.delete(el);if(window.MCIWalk)MCIWalk.detach(el);if(!tracks.size&&animation){cancelAnimationFrame(animation);animation=0;}}};
 /* Preflight all playable images. Four workers bound decode/network pressure on phones. */
 let loaded=false,inflight=null;
 window.MCIAssets={prepare:function(){

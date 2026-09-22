@@ -1,10 +1,12 @@
-const CACHE_VERSION='mci-2d-v6.7.1-map-1';
+const CACHE_VERSION='mci-2d-v6.8.0-walk-1';
 const APP_SHELL=[
   './',
   './index.html',
   './mci-client.js',
   './mci-phone.css',
   './mci-phone.js',
+  './mci-walk.js',
+  './mci-walk.css',
   './asset-manifest.json',
   './offline.html',
   './manifest.webmanifest',
@@ -48,7 +50,7 @@ self.addEventListener('fetch',event=>{
     return;
   }
 
-  if(url.pathname.includes('/assets-v66/')||url.pathname.includes('/icons/')||url.pathname.endsWith('/mci-client.js')||url.pathname.endsWith('/mci-phone.css')||url.pathname.endsWith('/mci-phone.js')||url.pathname.endsWith('/asset-manifest.json')){
+  if(url.pathname.includes('/assets-v66/')||url.pathname.includes('/assets-walk-v68/')||url.pathname.includes('/icons/')||url.pathname.endsWith('/mci-client.js')||url.pathname.endsWith('/mci-phone.css')||url.pathname.endsWith('/mci-phone.js')||url.pathname.endsWith('/mci-walk.js')||url.pathname.endsWith('/mci-walk.css')||url.pathname.endsWith('/asset-manifest.json')){
     event.respondWith(
       caches.match(request).then(hit=>hit||fetch(request).then(response=>{
         if(response.ok){
