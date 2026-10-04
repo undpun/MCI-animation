@@ -1,4 +1,4 @@
-const CACHE_VERSION='mci-2d-v6.9.1-language-2';
+const CACHE_VERSION='mci-2d-v6.9.2-language-3';
 const APP_SHELL=[
   './',
   './index.html',
