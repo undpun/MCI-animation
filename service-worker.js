@@ -1,4 +1,4 @@
-const CACHE_VERSION='mci-2d-v6.15-audio-1';
+const CACHE_VERSION='mci-2d-v6.16-vehicle-motion-1';
 const APP_SHELL=[
   './',
   './index.html',
