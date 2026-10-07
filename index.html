@@ -1655,7 +1655,7 @@ button,.btn,.tab,.switchbtn,select,input[type=checkbox],input[type=radio]{touch-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script src="mci-client.js?v=6.9-language-1"></script>
 <script src="mci-walk.js"></script>
-<script src="mci-audio.js?v=6.13"></script>
+<script src="mci-audio.js?v=6.14"></script>
 <script src="mci-i18n.js?v=6.9.3-language-4"></script>
 <script src="mci-runtime-en.js?v=6.9.3-language-4"></script>
 <script src="mci-physiology-en.js?v=6.9.1-language-2"></script>
@@ -11785,21 +11785,26 @@ function boot(){
 /* Audio uses a read-only view of existing game state. No sound state is sent to Firebase. */
 function mciLocalAudioSnapshot(){
  const elapsed=elapsedMinutes(STATE.gc),station=STATE.me&&STATE.me.station||'',zone=station==='TX_RED'?'RED':station==='TX_YELLOW'?'YELLOW':station==='TX_GREEN'?'GREEN':'';
- const patients=(STATE.patients||[]).map(function(p){
-   const c=findCase(STATE.cases,p.id)||{},v=triagePhysiologySource(p,c,elapsed),gcs=Number(v.gcs||15),dead=patientIsDead(p,elapsed);
-   const nearby=station==='PRIMARY'?p.stage==='PRIMARY':station==='SECONDARY'?p.stage==='SECONDARY':zone?p.stage==='TX'&&String(p.txZone||'').toUpperCase()===zone:station==='LOADING'||station==='PARKING'?p.stage==='TRANSFER':false;
-   return {dead:dead,conscious:gcs>=10&&gcs<=15&&v.breathing!==false,nearby:nearby};
- });
+ let voiceCount=0,monitorCount=0;
+ if(station==='PRIMARY'||station==='SECONDARY'||station==='LOADING'||zone){
+  for(const p of STATE.patients||[]){
+   const nearby=station==='PRIMARY'?p.stage==='PRIMARY':station==='SECONDARY'?p.stage==='SECONDARY':station==='LOADING'?p.stage==='TRANSFER':p.stage==='TX'&&String(p.txZone||'').toUpperCase()===zone;
+   if(!nearby||patientIsDead(p,elapsed))continue;
+   if(zone)monitorCount++;
+   const c=findCase(STATE.cases,p.id)||{},v=triagePhysiologySource(p,c,elapsed),gcs=Number(v.gcs||15);
+   if(gcs>=10&&gcs<=15&&v.breathing!==false)voiceCount++;
+  }
+ }
  const messages=[];
  if(station==='COMMANDER'||communicationZoneForStation(station)){
    const zones=station==='COMMANDER'?communicationZones():[communicationZoneForStation(station)];
    zones.forEach(function(z){communicationMessagesForZone(z).slice(-3).forEach(function(m){messages.push({id:m.id,at:Number(m.at||0),urgent:m.kind==='urgent',incoming:communicationIncomingForMe(m,z)});});});
  }
- return {status:STATE.gc.status,paused:!!STATE.gc.clockPaused,station:station,patients:patients,
-  vehicles:(STATE.vehicles||[]).map(function(v){return {state:vehicleDeploymentState(v,elapsed)};}),
+ return {status:STATE.gc.status,paused:!!STATE.gc.clockPaused,station:station,voiceCount:voiceCount,monitorCount:monitorCount,
+  vehiclesMoving:(station==='PARKING'||station==='LOADING')&&(STATE.vehicles||[]).some(function(v){const state=vehicleDeploymentState(v,elapsed);return state==='TO_PARKING'||state==='TO_LOADING';}),
   messages:messages,position:twoDLastPosition&&{scene:twoDLastPosition.scene,x:twoDLastPosition.x,y:twoDLastPosition.y}};
 }
-setInterval(function(){if(window.MCIAudio&&STATE.ready)MCIAudio.update(mciLocalAudioSnapshot());},850);
+setInterval(function(){if(window.MCIAudio&&STATE.ready)MCIAudio.update(mciLocalAudioSnapshot());},2200);
 document.addEventListener('click',function(e){if(!window.MCIAudio)return;const btn=e.target.closest('[data-act]');if(btn&&['clinicalCheck','txStart','supplyTake','supplyReturn'].includes(btn.dataset.act))MCIAudio.cue('treatment');},true);
 
 document.documentElement.dataset.mciVersion='6.6.0';

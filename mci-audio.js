@@ -6,11 +6,11 @@ let settings={...defaults};try{settings={...settings,...JSON.parse(localStorage.
 let unlocked=false, last=null, lastStep=0,lastRadio=0,seenMessages=new Set(),loops={},panel=null,latest=null,motionAt=null,stepIndex=0,stepPool=[];
 const clamp=n=>Math.max(0,Math.min(1,Number(n)||0));
 function save(){try{localStorage.setItem(KEY,JSON.stringify(settings));}catch(_){}}
-function sound(file){const a=new Audio(DIR+file);a.preload='auto';return a;}
+function sound(file){const a=new Audio(DIR+file);a.preload='none';return a;}
 function loop(name,file){const a=sound(file);a.loop=true;a.volume=0;loops[name]=a;return a;}
 function gain(name,value){const a=loops[name];if(!a)return;a.volume=clamp(value);if(unlocked&&settings.enabled&&a.volume>.001&&a.paused)a.play().catch(()=>{});if((!settings.enabled||a.volume<=.001)&&!a.paused)a.pause();}
 function one(file,volume){if(!unlocked||!settings.enabled||document.hidden)return;const a=sound(file);a.volume=clamp(volume*settings.master);a.play().catch(()=>{});a.addEventListener('ended',()=>{a.src='';},{once:true});}
-function init(){if(panel)return;loop('ambient',FILES.ambient);loop('siren',FILES.siren);loop('engine',FILES.engine);loop('patients',FILES.patients);loop('monitor',FILES.monitor);stepPool=[sound(FILES.step),sound(FILES.step)];
+function init(){if(panel)return;loop('ambient',FILES.ambient);loop('siren',FILES.siren);loop('engine',FILES.engine);loop('patientsA',FILES.patients);loop('patientsB',FILES.patients);loop('monitorA',FILES.monitor);loop('monitorB',FILES.monitor);stepPool=[sound(FILES.step)];stepPool[0].preload='auto';
  panel=document.createElement('aside');panel.id='mciAudioDock';panel.setAttribute('aria-label','Game audio settings');
  panel.innerHTML='<button type="button" id="mciAudioToggle" aria-expanded="false">🔇 <span>เปิดเสียง</span></button><div id="mciAudioSettings" hidden><div class="mci-audio-heading"><span>ตั้งค่าเสียง</span><button type="button" id="mciAudioClose" aria-label="ปิดหน้าต่างตั้งค่าเสียง">✕</button></div><label>เสียงรวม <input data-sound="master" type="range" min="0" max="100"></label><label>บรรยากาศ <input data-sound="scene" type="range" min="0" max="100"></label><label>ไซเรน / เอฟเฟกต์ <input data-sound="effects" type="range" min="0" max="100"></label><label><input data-sound="intense" type="checkbox"> โหมดกดดัน / Intense</label><button type="button" id="mciAudioMute">ปิดเสียงทั้งหมด</button><small>เสียงเล่นในเครื่องนี้เท่านั้น</small></div>';
  document.body.appendChild(panel);const btn=panel.querySelector('#mciAudioToggle'),box=panel.querySelector('#mciAudioSettings');
@@ -29,7 +29,7 @@ function motion(p){
  const now=Date.now(),pos={scene:p.scene,x:Number(p.x),y:Number(p.y)};
  if(motionAt&&motionAt.scene===pos.scene){
   const dx=pos.x-motionAt.x,dy=pos.y-motionAt.y,d2=dx*dx+dy*dy;
-  if(d2>.000025&&d2<2500&&now-lastStep>300&&latest&&latest.status==='RUNNING'&&!latest.paused&&unlocked&&settings.enabled&&!document.hidden){
+  if(d2>.000025&&d2<2500&&now-lastStep>520&&latest&&latest.status==='RUNNING'&&!latest.paused&&unlocked&&settings.enabled&&!document.hidden){
    const a=stepPool[stepIndex++%stepPool.length];a.volume=clamp(settings.master*settings.effects*.045);
    try{a.currentTime=0;a.play().catch(()=>{});}catch(_){}lastStep=now;
   }
@@ -37,16 +37,21 @@ function motion(p){
  motionAt=pos;
 }
 function update(s){latest=s;if(!panel)init();const active=!!(s&&s.status==='RUNNING'&&!s.paused&&!document.hidden&&settings.enabled&&unlocked);
- const field=!!(s&&s.station!=='HOSPITAL'),pressure=settings.intense?1:.62,master=settings.master;
- gain('ambient',active?master*settings.scene*(field?.65:.27)*pressure:0);
- const coming=active&&s.vehicles&&s.vehicles.some(v=>v.state==='TO_PARKING'||v.state==='TO_LOADING');
- gain('siren',active?master*settings.effects*(field?(coming?.42:.31):.10)*pressure:0);
- gain('engine',coming?master*settings.effects*(field?.19:.08)*pressure:0);
- const nearby=(s&&s.patients||[]).filter(p=>!p.dead&&p.nearby);
- gain('patients',active&&nearby.some(p=>p.conscious)?master*settings.scene*(settings.intense?.55:.36):0);
- const treatment=!!(s&&['TX_RED','TX_YELLOW','TX_GREEN'].includes(s.station));
- gain('monitor',active&&treatment&&nearby.length?master*settings.effects*.67:0);
+ const station=s&&s.station||'',treatment=['TX_RED','TX_YELLOW','TX_GREEN'].includes(station),triage=station==='PRIMARY'||station==='SECONDARY',transport=station==='PARKING'||station==='LOADING',pressure=settings.intense?1:.62,master=settings.master;
+ gain('ambient',active?master*settings.scene*(transport?.28:triage||treatment?.48:.12)*pressure:0);
+ gain('siren',active?master*settings.effects*(transport?.28:triage||treatment?.055:0)*pressure:0);
+ gain('engine',active&&transport&&s.vehiclesMoving?master*settings.effects*.12*pressure:0);
+ const voices=active?Math.max(0,Number(s.voiceCount)||0):0,monitors=active&&treatment?Math.max(0,Number(s.monitorCount)||0):0;
+ const voiceLevel=master*settings.scene*(settings.intense?.30:.20)*Math.min(1.55,1+.20*Math.log2(Math.max(1,voices)));
+ gain('patientsA',voices?voiceLevel:0);
+ gain('patientsB',voices>=2?voiceLevel*.58:0);
+ const monitorLevel=master*settings.effects*.43*Math.min(1.5,1+.16*Math.log2(Math.max(1,monitors)));
+ gain('monitorA',monitors?monitorLevel:0);
+ gain('monitorB',monitors>=2?monitorLevel*.48:0);
  if(!active){last=null;motionAt=null;return;}
+ // Offset the second loop only when it first starts, so concurrent voices/beeps do not align.
+ if(voices>=2&&!loops.patientsB.datasetOffset){try{loops.patientsB.currentTime=2.1;loops.patientsB.datasetOffset=true;}catch(_){}}if(!voices)loops.patientsB.datasetOffset=false;
+ if(monitors>=2&&!loops.monitorB.datasetOffset){try{loops.monitorB.currentTime=.35;loops.monitorB.datasetOffset=true;}catch(_){}}if(!monitors)loops.monitorB.datasetOffset=false;
  const now=Date.now();
  if(s.messages){for(const m of s.messages){if(!m||!m.id)continue;if(!seenMessages.has(m.id)&&last&&m.at>last.when&&m.incoming&&now-lastRadio>900){one(FILES.radio,settings.effects*(m.urgent?.48:.24));lastRadio=now;}seenMessages.add(m.id);}if(seenMessages.size>500)seenMessages=new Set(s.messages.map(m=>m.id));}
  last={when:now};
