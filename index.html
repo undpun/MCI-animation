@@ -1655,7 +1655,7 @@ button,.btn,.tab,.switchbtn,select,input[type=checkbox],input[type=radio]{touch-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script src="mci-client.js?v=6.9-language-1"></script>
 <script src="mci-walk.js"></script>
-<script src="mci-audio.js?v=6.14"></script>
+<script src="mci-audio.js?v=6.15"></script>
 <script src="mci-i18n.js?v=6.9.3-language-4"></script>
 <script src="mci-runtime-en.js?v=6.9.3-language-4"></script>
 <script src="mci-physiology-en.js?v=6.9.1-language-2"></script>
@@ -8330,6 +8330,13 @@ function twoDPlayerPayload(){
     hospitals:(STATE.hospitals||[]).map(function(h){return{name:h.name,outboundMin:h.outboundMin,distanceMin:h.distanceMin,redFree:Math.max(0,Number(h.redCap||0)-Number(h.redUsed||0)),yellowFree:Math.max(0,Number(h.yellowCap||0)-Number(h.yellowUsed||0)),greenFree:Math.max(0,Number(h.greenCap||0)-Number(h.greenUsed||0))};}),positions:STATE.positions||{}};
 }
 function patchTwoDFrameSource(source){
+  // Keep vehicle animation time monotonic across Firebase snapshot updates.
+  source=source.replace("function sharedMotionNow(){return Number(window.__vehicleServerNowMs||Date.now())+(performance.now()-Number(window.__vehicleSyncPerf||performance.now()))}",
+    "let vehicleClockOffset=null;function syncVehicleClock(serverNow){const target=Number(serverNow||Date.now())-performance.now();if(vehicleClockOffset===null||Math.abs(target-vehicleClockOffset)>5000)vehicleClockOffset=target;else vehicleClockOffset+=Math.max(-12,Math.min(12,(target-vehicleClockOffset)*.12));}function sharedMotionNow(){return performance.now()+(vehicleClockOffset===null?Date.now()-performance.now():vehicleClockOffset)}");
+  source=source.replace("window.__vehicleServerNowMs=Number(q.serverNowMs||Date.now());window.__vehicleSyncPerf=performance.now();", "syncVehicleClock(q.serverNowMs);");
+  // Treatment countdowns have their own animation loop; they must not rebuild the full scene every sync.
+  source=source.replace("const sig=JSON.stringify([q.patients||[],q.vehicles||[],q.hospitals||[],q.vehicleRequests||[]]);",
+    "const patientSig=(q.patients||[]).map(({txActiveRemainSec,txActiveStartMs,txActiveEndMs,...p})=>p);const sig=JSON.stringify([patientSig,q.vehicles||[],q.hospitals||[],q.vehicleRequests||[]]);");
   source=source.replace('<script src="mci-client.js">','<script src="mci-client.js?v=6.9-language-1">');
   source=source.replace('</head>','<script src="mci-i18n.js?v=6.9.3-language-4"></'+'script><script src="mci-runtime-en.js?v=6.9.3-language-4"></'+'script></head>');
   const morgueCss=`
@@ -11801,6 +11808,7 @@ function mciLocalAudioSnapshot(){
    zones.forEach(function(z){communicationMessagesForZone(z).slice(-3).forEach(function(m){messages.push({id:m.id,at:Number(m.at||0),urgent:m.kind==='urgent',incoming:communicationIncomingForMe(m,z)});});});
  }
  return {status:STATE.gc.status,paused:!!STATE.gc.clockPaused,station:station,voiceCount:voiceCount,monitorCount:monitorCount,
+  sirenSources:activeFieldTents('PARKING').concat(activeFieldTents('LOADING')).map(function(t){const q=fieldTentDoorPoint(t);return{x:q.x,y:q.y};}),
   vehiclesMoving:(station==='PARKING'||station==='LOADING')&&(STATE.vehicles||[]).some(function(v){const state=vehicleDeploymentState(v,elapsed);return state==='TO_PARKING'||state==='TO_LOADING';}),
   messages:messages,position:twoDLastPosition&&{scene:twoDLastPosition.scene,x:twoDLastPosition.x,y:twoDLastPosition.y}};
 }

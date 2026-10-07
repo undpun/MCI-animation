@@ -3,7 +3,7 @@
 const DIR='assets-sound/', FILES={ambient:'scene_ambience.mp3',siren:'siren.mp3',engine:'vehicle_engine.mp3',radio:'radio_chirp.mp3',step:'footstep.mp3',gear:'treatment_gear.mp3',patients:'patient_bed.mp3',monitor:'monitor.mp3'};
 const KEY='mci-sound-v1', defaults={enabled:false,master:.7,scene:.65,effects:.75,intense:true};
 let settings={...defaults};try{settings={...settings,...JSON.parse(localStorage.getItem(KEY)||'{}')};}catch(_){}
-let unlocked=false, last=null, lastStep=0,lastRadio=0,seenMessages=new Set(),loops={},panel=null,latest=null,motionAt=null,stepIndex=0,stepPool=[];
+let unlocked=false, last=null, lastStep=0,lastSirenMotion=0,lastRadio=0,seenMessages=new Set(),loops={},panel=null,latest=null,motionAt=null,stepIndex=0,stepPool=[];
 const clamp=n=>Math.max(0,Math.min(1,Number(n)||0));
 function save(){try{localStorage.setItem(KEY,JSON.stringify(settings));}catch(_){}}
 function sound(file){const a=new Audio(DIR+file);a.preload='none';return a;}
@@ -24,6 +24,14 @@ function init(){if(panel)return;loop('ambient',FILES.ambient);loop('siren',FILES
  document.addEventListener('pointerdown',e=>{if(!box.hidden&&!panel.contains(e.target))closePanel();}, {capture:true});
  document.addEventListener('visibilitychange',()=>update(latest));refreshLabel();}
 function refreshLabel(){if(!panel)return;panel.querySelector('#mciAudioToggle').innerHTML=(settings.enabled?'🔊 <span>เสียงเปิด':'🔇 <span>เปิดเสียง')+'</span>';}
+function outsideSiren(pos){
+ const sources=latest&&latest.sirenSources||[];let proximity=0;
+ if(pos&&pos.scene==='field_start'&&sources.length){
+  const distance=Math.min(...sources.map(q=>Math.hypot(Number(pos.x)-q.x,Number(pos.y)-q.y)));
+  proximity=Math.pow(Math.max(0,1-distance/1000),1.6);
+ }
+ return .035+.28*proximity;
+}
 function motion(p){
  if(!p||!Number.isFinite(Number(p.x))||!Number.isFinite(Number(p.y)))return;
  const now=Date.now(),pos={scene:p.scene,x:Number(p.x),y:Number(p.y)};
@@ -34,12 +42,13 @@ function motion(p){
    try{a.currentTime=0;a.play().catch(()=>{});}catch(_){}lastStep=now;
   }
  }
+ if(pos.scene==='field_start'&&now-lastSirenMotion>250&&latest&&latest.status==='RUNNING'&&!latest.paused&&!document.hidden){lastSirenMotion=now;gain('siren',settings.master*settings.effects*outsideSiren(pos)*(settings.intense?1:.62));}
  motionAt=pos;
 }
 function update(s){latest=s;if(!panel)init();const active=!!(s&&s.status==='RUNNING'&&!s.paused&&!document.hidden&&settings.enabled&&unlocked);
- const station=s&&s.station||'',treatment=['TX_RED','TX_YELLOW','TX_GREEN'].includes(station),triage=station==='PRIMARY'||station==='SECONDARY',transport=station==='PARKING'||station==='LOADING',pressure=settings.intense?1:.62,master=settings.master;
+ const station=s&&s.station||'',outside=!!(s&&s.position&&s.position.scene==='field_start'&&!station),treatment=['TX_RED','TX_YELLOW','TX_GREEN'].includes(station),triage=station==='PRIMARY'||station==='SECONDARY',transport=station==='PARKING'||station==='LOADING',pressure=settings.intense?1:.62,master=settings.master;
  gain('ambient',active?master*settings.scene*(transport?.28:triage||treatment?.48:.12)*pressure:0);
- gain('siren',active?master*settings.effects*(transport?.28:triage||treatment?.055:0)*pressure:0);
+ gain('siren',active?master*settings.effects*(transport?.28:triage||treatment?.055:outside?outsideSiren(s.position):0)*pressure:0);
  gain('engine',active&&transport&&s.vehiclesMoving?master*settings.effects*.12*pressure:0);
  const voices=active?Math.max(0,Number(s.voiceCount)||0):0,monitors=active&&treatment?Math.max(0,Number(s.monitorCount)||0):0;
  const voiceLevel=master*settings.scene*(settings.intense?.30:.20)*Math.min(1.55,1+.20*Math.log2(Math.max(1,voices)));
