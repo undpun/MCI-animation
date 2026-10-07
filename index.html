@@ -7218,6 +7218,9 @@ async function requestPorterJob(patientId,fromZone,toZone,requestId){
   patientId=normU(patientId);
   requestId=norm(requestId)||('PORTER_REQ_'+patientId+'_'+sharedNowMs().toString(36));
   const elapsed=elapsedMinutes(STATE.gc),nowMs=sharedNowMs(),jobId='PORTER_'+patientId+'_'+nowMs.toString(36);
+  const current=STATE.patients.find(function(p){return normU(p.id)===patientId;});
+  if(!current){toast('ไม่พบผู้ป่วย','err');return false;}
+  if(hasAnyTxInProgress(current,elapsed)){toast('ผู้ป่วยกำลังรักษาอยู่ ต้องรอให้การรักษาเสร็จก่อนเรียกพนักงานเปล','err');return false;}
   let already=false,fail='';
   const result=await kvPortersTransaction(function(porters){
     const jobs=Object.assign({},porters.jobs||{});
@@ -7327,7 +7330,8 @@ async function completePorterJob(jobId,options){
       const patients=Array.isArray(root[KEYS.patients])?root[KEYS.patients].slice():[],vehicles=Array.isArray(root[KEYS.vehicles])?root[KEYS.vehicles].slice():[],pi=patients.findIndex(function(p){return normU(p.id)===normU(job.patientId);});
       if(pi<0){fail='ไม่พบผู้ป่วยของคำขอนี้';delete jobs[jobId];root[KEYS.porters]=autoAssignPorterJobs(Object.assign({},porters,{jobs:jobs}),elapsed,'SYSTEM');return root;}
       const p=patients[pi],fromZone=String(job.fromZone||''),toZone=String(job.toZone||''),by=job.requestedBy||'PORTER';let next=null;
-      if(patientIsDead(p,elapsed)){fail='ผู้ป่วยเสียชีวิตระหว่างรอเคลื่อนย้าย';}
+      if(hasAnyTxInProgress(p,elapsed)){fail='ผู้ป่วยกำลังรักษาอยู่ ต้องรอให้การรักษาเสร็จก่อนเคลื่อนย้าย';}
+      else if(patientIsDead(p,elapsed)){fail='ผู้ป่วยเสียชีวิตระหว่างรอเคลื่อนย้าย';}
       else if(fromZone==='PRIMARY'&&p.stage==='PRIMARY'&&p.primary){
         next=Object.assign({},p,{stage:'SECONDARY',primaryTime:elapsed,primaryOrder:maxOrder(patients,'primaryOrder')+1,primaryDest:'SECONDARY',secondaryArrivalTime:elapsed,transit:null,events:(p.events||[]).concat([{t:elapsed,type:'PRIMARY_SECONDARY',by:by},{t:elapsed,type:'PORTER_ARRIVED SECONDARY',by:'PORTER'}])});
       }else if(fromZone==='SECONDARY'&&p.stage==='SECONDARY'&&p.secondary&&p.secondary!=='BLACK'){
@@ -7364,6 +7368,7 @@ function porterJobForPatient(patientId){
   return id?jobs[id]:null;
 }
 function porterAwareTransferButtonHtml(p,fromZone,toZone,label,act,dataAttrs,disabled){
+  disabled=disabled||hasAnyTxInProgress(p,elapsedMinutes(STATE.gc));
   const mobile=effectiveCanWalk(p)==='yes';
   if(mobile){
     return '<button class="btn sm primary" data-act="'+act+'" '+dataAttrs+' '+(disabled?'disabled':'')+'>ส่งต่อ '+esc(label)+' →</button>';

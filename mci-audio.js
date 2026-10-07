@@ -18,6 +18,7 @@ function init(){if(panel)return;loop('ambient',FILES.ambient);loop('siren',FILES
  panel.querySelectorAll('input[data-sound]').forEach(input=>{const k=input.dataset.sound;if(input.type==='checkbox')input.checked=!!settings[k];else input.value=Math.round(clamp(settings[k])*100);input.addEventListener('input',()=>{settings[k]=input.type==='checkbox'?input.checked:Number(input.value)/100;save();update(latest);});});
  // Browsers unlock audio only after a user gesture. A saved preference resumes on the next gesture.
  document.addEventListener('pointerdown',()=>{if(settings.enabled&&!unlocked){unlocked=true;update(latest);}}, {capture:true});
+ document.addEventListener('pointerdown',e=>{if(!box.hidden&&!panel.contains(e.target)){box.hidden=true;btn.setAttribute('aria-expanded','false');}}, {capture:true});
  document.addEventListener('visibilitychange',()=>update(latest));refreshLabel();}
 function refreshLabel(){if(!panel)return;panel.querySelector('#mciAudioToggle').innerHTML=(settings.enabled?'🔊 <span>เสียงเปิด':'🔇 <span>เปิดเสียง')+'</span>';}
 function motion(p){
@@ -26,7 +27,7 @@ function motion(p){
  if(motionAt&&motionAt.scene===pos.scene){
   const dx=pos.x-motionAt.x,dy=pos.y-motionAt.y,d2=dx*dx+dy*dy;
   if(d2>.000025&&d2<2500&&now-lastStep>300&&latest&&latest.status==='RUNNING'&&!latest.paused&&unlocked&&settings.enabled&&!document.hidden){
-   const a=stepPool[stepIndex++%stepPool.length];a.volume=clamp(settings.master*settings.effects*.47);
+   const a=stepPool[stepIndex++%stepPool.length];a.volume=clamp(settings.master*settings.effects*.16);
    try{a.currentTime=0;a.play().catch(()=>{});}catch(_){}lastStep=now;
   }
  }
@@ -41,7 +42,7 @@ function update(s){latest=s;if(!panel)init();const active=!!(s&&s.status==='RUNN
  const nearby=(s&&s.patients||[]).filter(p=>!p.dead&&p.nearby);
  gain('patients',active&&nearby.some(p=>p.conscious)?master*settings.scene*(settings.intense?.55:.36):0);
  const treatment=!!(s&&['TX_RED','TX_YELLOW','TX_GREEN'].includes(s.station));
- gain('monitor',active&&treatment&&nearby.length?master*settings.effects*.25:0);
+ gain('monitor',active&&treatment&&nearby.length?master*settings.effects*.67:0);
  if(!active){last=null;motionAt=null;return;}
  const now=Date.now();
  if(s.messages){for(const m of s.messages){if(!m||!m.id)continue;if(!seenMessages.has(m.id)&&last&&m.at>last.when&&m.incoming&&now-lastRadio>900){one(FILES.radio,settings.effects*(m.urgent?.48:.24));lastRadio=now;}seenMessages.add(m.id);}if(seenMessages.size>500)seenMessages=new Set(s.messages.map(m=>m.id));}

@@ -1,4 +1,4 @@
-const CACHE_VERSION='mci-2d-v6.11-audio-1';
+const CACHE_VERSION='mci-2d-v6.12-audio-1';
 const APP_SHELL=[
   './',
   './index.html',
