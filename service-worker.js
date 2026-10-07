@@ -1,4 +1,4 @@
-const CACHE_VERSION='mci-2d-v6.9.2-language-3';
+const CACHE_VERSION='mci-2d-v6.10-audio-1';
 const APP_SHELL=[
   './',
   './index.html',
@@ -10,6 +10,17 @@ const APP_SHELL=[
   './mci-i18n.js',
   './mci-runtime-en.js',
   './mci-physiology-en.js',
+  './mci-audio.js',
+  './mci-audio.css',
+  './assets-sound/scene_ambience.mp3',
+  './assets-sound/siren.mp3',
+  './assets-sound/vehicle_engine.mp3',
+  './assets-sound/radio_chirp.mp3',
+  './assets-sound/footstep.mp3',
+  './assets-sound/treatment_gear.mp3',
+  './assets-sound/patient_moan_1.mp3',
+  './assets-sound/patient_moan_2.mp3',
+  './assets-sound/patient_moan_3.mp3',
   './asset-manifest.json',
   './offline.html',
   './manifest.webmanifest',
@@ -53,7 +64,7 @@ self.addEventListener('fetch',event=>{
     return;
   }
 
-  if(url.pathname.includes('/assets-v66/')||url.pathname.includes('/assets-walk-v68/')||url.pathname.includes('/icons/')||url.pathname.endsWith('/mci-client.js')||url.pathname.endsWith('/mci-phone.css')||url.pathname.endsWith('/mci-phone.js')||url.pathname.endsWith('/mci-walk.js')||url.pathname.endsWith('/mci-walk.css')||url.pathname.endsWith('/mci-i18n.js')||url.pathname.endsWith('/mci-runtime-en.js')||url.pathname.endsWith('/mci-physiology-en.js')||url.pathname.endsWith('/asset-manifest.json')){
+  if(url.pathname.includes('/assets-v66/')||url.pathname.includes('/assets-walk-v68/')||url.pathname.includes('/assets-sound/')||url.pathname.includes('/icons/')||url.pathname.endsWith('/mci-client.js')||url.pathname.endsWith('/mci-phone.css')||url.pathname.endsWith('/mci-phone.js')||url.pathname.endsWith('/mci-walk.js')||url.pathname.endsWith('/mci-walk.css')||url.pathname.endsWith('/mci-i18n.js')||url.pathname.endsWith('/mci-runtime-en.js')||url.pathname.endsWith('/mci-physiology-en.js')||url.pathname.endsWith('/asset-manifest.json')){
     event.respondWith(
       caches.match(request).then(hit=>hit||fetch(request).then(response=>{
         if(response.ok){
