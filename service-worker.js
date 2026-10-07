@@ -1,4 +1,4 @@
-const CACHE_VERSION='mci-2d-v6.10-audio-1';
+const CACHE_VERSION='mci-2d-v6.11-audio-1';
 const APP_SHELL=[
   './',
   './index.html',
@@ -21,6 +21,8 @@ const APP_SHELL=[
   './assets-sound/patient_moan_1.mp3',
   './assets-sound/patient_moan_2.mp3',
   './assets-sound/patient_moan_3.mp3',
+  './assets-sound/patient_bed.mp3',
+  './assets-sound/monitor.mp3',
   './asset-manifest.json',
   './offline.html',
   './manifest.webmanifest',
