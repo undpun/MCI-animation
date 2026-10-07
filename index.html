@@ -1633,7 +1633,7 @@ button,.btn,.tab,.switchbtn,select,input[type=checkbox],input[type=radio]{touch-
 </style>
 <link rel="stylesheet" href="mci-phone.css">
 <link rel="stylesheet" href="mci-walk.css">
-<link rel="stylesheet" href="mci-audio.css">
+<link rel="stylesheet" href="mci-audio.css?v=6.13">
 <style>.join-language-select{display:flex;gap:8px;margin:12px 0 18px}.join-language-select label{flex:1;cursor:pointer;border:1px solid #6db8be66;background:#122732;color:#e9f8f9;padding:10px;border-radius:10px;text-align:center;font-weight:700}.join-language-select label:has(input:checked){border-color:#63eadb;background:#1b494c}.join-language-select input{accent-color:#63eadb;margin-right:6px}</style>
 <script src="mci-phone.js" defer></script>
 </head>
@@ -1655,7 +1655,7 @@ button,.btn,.tab,.switchbtn,select,input[type=checkbox],input[type=radio]{touch-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script src="mci-client.js?v=6.9-language-1"></script>
 <script src="mci-walk.js"></script>
-<script src="mci-audio.js"></script>
+<script src="mci-audio.js?v=6.13"></script>
 <script src="mci-i18n.js?v=6.9.3-language-4"></script>
 <script src="mci-runtime-en.js?v=6.9.3-language-4"></script>
 <script src="mci-physiology-en.js?v=6.9.1-language-2"></script>
@@ -7218,7 +7218,8 @@ async function requestPorterJob(patientId,fromZone,toZone,requestId){
   patientId=normU(patientId);
   requestId=norm(requestId)||('PORTER_REQ_'+patientId+'_'+sharedNowMs().toString(36));
   const elapsed=elapsedMinutes(STATE.gc),nowMs=sharedNowMs(),jobId='PORTER_'+patientId+'_'+nowMs.toString(36);
-  const current=STATE.patients.find(function(p){return normU(p.id)===patientId;});
+  const livePatients=await kvGet(KEYS.patients,[]);
+  const current=livePatients.find(function(p){return normU(p.id)===patientId;});
   if(!current){toast('ไม่พบผู้ป่วย','err');return false;}
   if(hasAnyTxInProgress(current,elapsed)){toast('ผู้ป่วยกำลังรักษาอยู่ ต้องรอให้การรักษาเสร็จก่อนเรียกพนักงานเปล','err');return false;}
   let already=false,fail='';
@@ -8666,7 +8667,7 @@ async function handleTwoDFrameMessage(e){
   if(m.type==='ready'){twoDFrameReady=true;twoDLastSync='';twoDLastNavigateScene='';updateTwoDPlayerHost();return;}
   if(m.type==='navigated'){if(p.scene==='overview'){twoDLastNavigateScene='';updateTwoDPlayerHost();return;}const host=document.getElementById('twoDPlayerHost'),active=(STATE.ui.twoD&&STATE.ui.twoD.activeZone)||twoDZoneForStation(STATE.me.station),scene=active&&TWO_D_ZONES[active]?TWO_D_ZONES[active].scene:null;if(scene===p.scene&&host&&!host.classList.contains('hidden'))f.style.opacity='1';return;}
   if(m.type==='walkStart'){collapseTwoDWindowsForMovement();return;}
-  if(m.type==='uiOpen'){collapseCommunicationPanel();return;}
+  if(m.type==='uiOpen'){collapseCommunicationPanel();if(window.MCIAudio)MCIAudio.close();return;}
   if(m.type==='move'){if(p.scene==='overview')return;STATE.ui.twoD.lastScene=p.scene||'overview';if(p.scene==='overview'&&Number.isFinite(Number(p.x))&&Number.isFinite(Number(p.y)))STATE.ui.twoD.overviewPos={x:Number(p.x),y:Number(p.y)};if(window.MCIAudio)MCIAudio.motion(p);queueTwoDPosition(p,false);return;}
   if(m.type==='zoneEnter'){if(!playerTentMoveAllowed()){blockPlayerTentMove();restoreLockedPlayerZone();return;}await enterTwoDZone(p.zone);return;}if(m.type==='zoneExit'){if(!playerTentMoveAllowed()){blockPlayerTentMove();restoreLockedPlayerZone();return;}await exitTwoDZone();return;}
   if(m.type==='treatmentWalkOutArrived'){await completeTreatmentWalkOut(p.patientId);return;}

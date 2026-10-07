@@ -1,4 +1,4 @@
-const CACHE_VERSION='mci-2d-v6.12-audio-1';
+const CACHE_VERSION='mci-2d-v6.13-audio-1';
 const APP_SHELL=[
   './',
   './index.html',
@@ -33,8 +33,8 @@ const APP_SHELL=[
 ];
 
 self.addEventListener('install',event=>{
-  event.waitUntil(caches.open(CACHE_VERSION).then(cache=>cache.addAll(APP_SHELL)));
-  // Activate after older tabs close; never interrupt an active game session.
+  event.waitUntil(caches.open(CACHE_VERSION).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
+  // Activate new cache immediately. Running game state remains in the current tab.
 });
 
 self.addEventListener('activate',event=>{
@@ -66,9 +66,9 @@ self.addEventListener('fetch',event=>{
     return;
   }
 
-  if(url.pathname.includes('/assets-v66/')||url.pathname.includes('/assets-walk-v68/')||url.pathname.includes('/assets-sound/')||url.pathname.includes('/icons/')||url.pathname.endsWith('/mci-client.js')||url.pathname.endsWith('/mci-phone.css')||url.pathname.endsWith('/mci-phone.js')||url.pathname.endsWith('/mci-walk.js')||url.pathname.endsWith('/mci-walk.css')||url.pathname.endsWith('/mci-i18n.js')||url.pathname.endsWith('/mci-runtime-en.js')||url.pathname.endsWith('/mci-physiology-en.js')||url.pathname.endsWith('/asset-manifest.json')){
+  if(url.pathname.includes('/assets-v66/')||url.pathname.includes('/assets-walk-v68/')||url.pathname.includes('/assets-sound/')||url.pathname.includes('/icons/')||url.pathname.endsWith('/mci-audio.js')||url.pathname.endsWith('/mci-audio.css')||url.pathname.endsWith('/mci-client.js')||url.pathname.endsWith('/mci-phone.css')||url.pathname.endsWith('/mci-phone.js')||url.pathname.endsWith('/mci-walk.js')||url.pathname.endsWith('/mci-walk.css')||url.pathname.endsWith('/mci-i18n.js')||url.pathname.endsWith('/mci-runtime-en.js')||url.pathname.endsWith('/mci-physiology-en.js')||url.pathname.endsWith('/asset-manifest.json')){
     event.respondWith(
-      caches.match(request).then(hit=>hit||fetch(request).then(response=>{
+      caches.open(CACHE_VERSION).then(cache=>cache.match(request)).then(hit=>hit||fetch(request).then(response=>{
         if(response.ok){
           const copy=response.clone();
           caches.open(CACHE_VERSION).then(cache=>cache.put(request,copy)).catch(()=>{});

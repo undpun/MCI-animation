@@ -12,13 +12,16 @@ function gain(name,value){const a=loops[name];if(!a)return;a.volume=clamp(value)
 function one(file,volume){if(!unlocked||!settings.enabled||document.hidden)return;const a=sound(file);a.volume=clamp(volume*settings.master);a.play().catch(()=>{});a.addEventListener('ended',()=>{a.src='';},{once:true});}
 function init(){if(panel)return;loop('ambient',FILES.ambient);loop('siren',FILES.siren);loop('engine',FILES.engine);loop('patients',FILES.patients);loop('monitor',FILES.monitor);stepPool=[sound(FILES.step),sound(FILES.step)];
  panel=document.createElement('aside');panel.id='mciAudioDock';panel.setAttribute('aria-label','Game audio settings');
- panel.innerHTML='<button type="button" id="mciAudioToggle" aria-expanded="false">🔇 <span>เปิดเสียง</span></button><div id="mciAudioSettings" hidden><label>เสียงรวม <input data-sound="master" type="range" min="0" max="100"></label><label>บรรยากาศ <input data-sound="scene" type="range" min="0" max="100"></label><label>ไซเรน / เอฟเฟกต์ <input data-sound="effects" type="range" min="0" max="100"></label><label><input data-sound="intense" type="checkbox"> โหมดกดดัน / Intense</label><small>เสียงเล่นในเครื่องนี้เท่านั้น</small></div>';
+ panel.innerHTML='<button type="button" id="mciAudioToggle" aria-expanded="false">🔇 <span>เปิดเสียง</span></button><div id="mciAudioSettings" hidden><div class="mci-audio-heading"><span>ตั้งค่าเสียง</span><button type="button" id="mciAudioClose" aria-label="ปิดหน้าต่างตั้งค่าเสียง">✕</button></div><label>เสียงรวม <input data-sound="master" type="range" min="0" max="100"></label><label>บรรยากาศ <input data-sound="scene" type="range" min="0" max="100"></label><label>ไซเรน / เอฟเฟกต์ <input data-sound="effects" type="range" min="0" max="100"></label><label><input data-sound="intense" type="checkbox"> โหมดกดดัน / Intense</label><button type="button" id="mciAudioMute">ปิดเสียงทั้งหมด</button><small>เสียงเล่นในเครื่องนี้เท่านั้น</small></div>';
  document.body.appendChild(panel);const btn=panel.querySelector('#mciAudioToggle'),box=panel.querySelector('#mciAudioSettings');
- btn.addEventListener('click',()=>{settings.enabled=!settings.enabled;unlocked=true;save();btn.setAttribute('aria-expanded',settings.enabled?'true':'false');box.hidden=!settings.enabled;refreshLabel();update(latest);});
+ const closePanel=()=>{box.hidden=true;btn.setAttribute('aria-expanded','false');};
+ btn.addEventListener('click',()=>{if(!settings.enabled){settings.enabled=true;unlocked=true;save();update(latest);}box.hidden=!box.hidden;btn.setAttribute('aria-expanded',box.hidden?'false':'true');refreshLabel();});
+ panel.querySelector('#mciAudioClose').addEventListener('click',closePanel);
+ panel.querySelector('#mciAudioMute').addEventListener('click',()=>{settings.enabled=false;save();closePanel();refreshLabel();update(latest);});
  panel.querySelectorAll('input[data-sound]').forEach(input=>{const k=input.dataset.sound;if(input.type==='checkbox')input.checked=!!settings[k];else input.value=Math.round(clamp(settings[k])*100);input.addEventListener('input',()=>{settings[k]=input.type==='checkbox'?input.checked:Number(input.value)/100;save();update(latest);});});
  // Browsers unlock audio only after a user gesture. A saved preference resumes on the next gesture.
  document.addEventListener('pointerdown',()=>{if(settings.enabled&&!unlocked){unlocked=true;update(latest);}}, {capture:true});
- document.addEventListener('pointerdown',e=>{if(!box.hidden&&!panel.contains(e.target)){box.hidden=true;btn.setAttribute('aria-expanded','false');}}, {capture:true});
+ document.addEventListener('pointerdown',e=>{if(!box.hidden&&!panel.contains(e.target))closePanel();}, {capture:true});
  document.addEventListener('visibilitychange',()=>update(latest));refreshLabel();}
 function refreshLabel(){if(!panel)return;panel.querySelector('#mciAudioToggle').innerHTML=(settings.enabled?'🔊 <span>เสียงเปิด':'🔇 <span>เปิดเสียง')+'</span>';}
 function motion(p){
@@ -27,7 +30,7 @@ function motion(p){
  if(motionAt&&motionAt.scene===pos.scene){
   const dx=pos.x-motionAt.x,dy=pos.y-motionAt.y,d2=dx*dx+dy*dy;
   if(d2>.000025&&d2<2500&&now-lastStep>300&&latest&&latest.status==='RUNNING'&&!latest.paused&&unlocked&&settings.enabled&&!document.hidden){
-   const a=stepPool[stepIndex++%stepPool.length];a.volume=clamp(settings.master*settings.effects*.16);
+   const a=stepPool[stepIndex++%stepPool.length];a.volume=clamp(settings.master*settings.effects*.045);
    try{a.currentTime=0;a.play().catch(()=>{});}catch(_){}lastStep=now;
   }
  }
@@ -48,6 +51,7 @@ function update(s){latest=s;if(!panel)init();const active=!!(s&&s.status==='RUNN
  if(s.messages){for(const m of s.messages){if(!m||!m.id)continue;if(!seenMessages.has(m.id)&&last&&m.at>last.when&&m.incoming&&now-lastRadio>900){one(FILES.radio,settings.effects*(m.urgent?.48:.24));lastRadio=now;}seenMessages.add(m.id);}if(seenMessages.size>500)seenMessages=new Set(s.messages.map(m=>m.id));}
  last={when:now};
 }
+function close(){if(panel){const box=panel.querySelector('#mciAudioSettings');box.hidden=true;panel.querySelector('#mciAudioToggle').setAttribute('aria-expanded','false');}}
 function cue(kind){if(kind==='treatment')one(FILES.gear,settings.effects*.28);}
-root.MCIAudio={update,cue,motion};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+root.MCIAudio={update,cue,motion,close};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(window);
