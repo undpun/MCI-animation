@@ -1,4 +1,4 @@
-const CACHE_VERSION='mci-2d-v6.17-vehicle-start-1';
+const CACHE_VERSION='mci-2d-v6.18-command-transfer-1';
 const APP_SHELL=[
   './',
   './index.html',

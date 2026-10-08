@@ -3200,20 +3200,15 @@ async function kvRosterUpdate(mutator){
     return {};
   }
 }
-async function kvRootTransaction(mutator){
+let mciRootSeed=null,mciRootSeedAt=0;
+async function kvRootTransaction(mutator,forceRefresh){
   if(!fbReady) return {committed:false};
   try{
     const ref = fbDb.ref(DB_ROOT);
-    // Firebase's transaction() gives your update function whatever it has
-    // *locally cached* for this exact path. Since the rest of the app only
-    // ever reads individual child paths (DB_ROOT/patients, DB_ROOT/resources,
-    // ...), the SDK may never have cached the ROOT path itself — so the very
-    // first transaction on it can be handed `null` even though real data
-    // exists on the server, causing false "ไม่พบผู้ป่วย"/etc. aborts.
-    // Force a fresh read of the exact same path first so the transaction's
-    // update function always starts from real data.
-    const initialSnap = await ref.once('value');
-    const initialRoot = initialSnap.val();
+    // A confirmed seed avoids a second whole-game read before each command.
+    // Firebase still compares/retries the transaction against server state.
+    const usedSeed=!forceRefresh&&mciRootSeed&&Date.now()-mciRootSeedAt<15000;
+    const initialRoot=usedSeed?mciRootSeed:(await ref.once('value')).val();
     const result = await ref.transaction(function(root){
       // The compat SDK can still invoke a transaction's first local pass with
       // null even immediately after once('value').  Falling back to {} here
@@ -3248,6 +3243,9 @@ async function kvRootTransaction(mutator){
     STATE.fbConnected=true;
     const savedRoot={};
     const savedRaw=result.snapshot.val()||{};
+    mciRootSeed=savedRaw;mciRootSeedAt=Date.now();
+    // A stale fallback can fail validation locally: read fresh and try once.
+    if(!result.committed&&usedSeed)return kvRootTransaction(mutator,true);
     Object.keys(savedRaw).forEach(function(k){
       const v=savedRaw[k];
       try{savedRoot[k]=typeof v==='string'?JSON.parse(v):v;}catch(e){savedRoot[k]=v;}
@@ -7458,11 +7456,27 @@ async function hospitalTakeCarriedItem(item){
   const result=await kvRootTransaction(function(root){const resources=Array.isArray(root[KEYS.resources])?root[KEYS.resources]:DEFAULT_RESOURCES,carried=Object.assign({},root[KEYS.carried]||{}),mine=Object.assign({},carried[clientId]||{}),units=resourceWeightUnits(item,resources),used=carriedInventoryUnits(mine,resources);if(used+units>PLAYER_BAG_CAPACITY){fail='กระเป๋าเหลือ '+Math.max(0,PLAYER_BAG_CAPACITY-used)+' หน่วย แต่ '+item+' ใช้ '+units+' หน่วย';return null;}mine[item]=Number(mine[item]||0)+1;carried[clientId]=mine;root[KEYS.carried]=carried;return root;});
   if(!result.committed){toast(fail||'หยิบของไม่สำเร็จ','err');return false;}STATE.carried=result.root[KEYS.carried];if(currentStartWorldScene()==='hospital_base')STATE.ui.hospitalBagOpen=true;render(true);return true;
 }
+let hospitalReadyPending=false;
 async function toggleHospitalStagingReady(){
+  if(hospitalReadyPending)return false;
   if(hospitalStartEnabled(STATE.gc)){toast('โหมดนี้ให้กดพร้อมจากภายในรถ','err');return false;}
-  const player=STATE.me.name;if(!player)return false;let ready=false;
-  const result=await kvRootTransaction(function(root){const roster=Object.assign({},root[KEYS.roster]||{}),rec=Object.assign({},roster[player]||{});if((rec.deploymentStatus||'HOSPITAL')!=='HOSPITAL'){return null;}ready=!rec.stagingReady;roster[player]=Object.assign({},rec,{station:'HOSPITAL_BASE',stagingReady:ready,vehicleReady:ready,assignedVehicle:null});root[KEYS.roster]=roster;const gc=Object.assign({},root[KEYS.gc]||STATE.gc);gc.operationsLog=(gc.operationsLog||[]).concat([{t:elapsedMinutes(gc),type:(ready?'STAGING_READY ':'STAGING_NOT_READY ')+player,by:player}]);root[KEYS.gc]=gc;return root;});
-  if(!result.committed){toast('เปลี่ยนสถานะพร้อมไม่สำเร็จ','err');return false;}STATE.roster=result.root[KEYS.roster];STATE.gc=result.root[KEYS.gc];applyRosterIdentity();STATE.ui.startPanel=null;STATE.ui.hospitalBagOpen=false;render(true);toast(ready?'Command เห็นสถานะพร้อมเป็นสีเขียวแล้ว':'ยกเลิกสถานะพร้อมแล้ว',ready?'ok':'');return true;
+  const player=STATE.me.name;if(!player)return false;
+  const ready=!(STATE.roster[player]||{}).stagingReady;
+  hospitalReadyPending=true;render(true);
+  try{
+    const saved=await kvUpdate(KEYS.roster,{},function(roster){
+      const rec=roster[player];
+      if(!rec||(rec.deploymentStatus||'HOSPITAL')!=='HOSPITAL')return null;
+      return Object.assign({},roster,{[player]:Object.assign({},rec,{station:'HOSPITAL_BASE',stagingReady:ready,vehicleReady:ready,assignedVehicle:null})});
+    });
+    STATE.roster=saved;applyRosterIdentity();STATE.ui.startPanel=null;STATE.ui.hospitalBagOpen=false;
+    toast(ready?'Command เห็นสถานะพร้อมเป็นสีเขียวแล้ว':'ยกเลิกสถานะพร้อมแล้ว',ready?'ok':'');
+    // Audit logging must not hold up the readiness control.
+    const entry={t:elapsedMinutes(STATE.gc),type:(ready?'STAGING_READY ':'STAGING_NOT_READY ')+player,by:player};
+    kvUpdate(KEYS.gc,STATE.gc,function(gc){return Object.assign({},gc,{operationsLog:(gc.operationsLog||[]).concat([entry])});}).catch(function(e){console.warn('Readiness audit log failed',e);});
+    return true;
+  }catch(e){toast('เปลี่ยนสถานะพร้อมไม่สำเร็จ กรุณาลองใหม่','err');return false;}
+  finally{hospitalReadyPending=false;render(true);}
 }
 async function commanderAssignReadyPlayer(player,tentId){
   if(STATE.me.station!=='COMMANDER'||hospitalStartEnabled(STATE.gc))return false;
@@ -8415,16 +8429,24 @@ function collapseWindowsBeforeWalk(){
   const oldPeer="function peerEl(key,gender){const e=document.createElement('div');e.className='doctor remoteDoctor'+(String(gender||'').toUpperCase()==='FEMALE'?' femaleDoctor':'');e.dataset.client=key;e.innerHTML='<div class=\"head\"></div><div class=\"hair\"></div><div class=\"torso\"></div><div class=\"legs\"></div><div class=\"nameTag\"></div>';e.style.transition='left .12s linear,top .12s linear';e.onclick=event=>{event.stopPropagation();openFriendTransfer(e.dataset.client)};return e}";
   const newPeer=`function walkToFriend(clientId){
  const peer=(snap.positions||{})[clientId],cur=pos(),curScene=sceneKey();if(!peer||peer.scene!==curScene){toast('เพื่อนไม่ได้อยู่ในฉากเดียวกันแล้ว');return}
- const dx=Number(cur.x)-Number(peer.x),dy=Number(cur.y)-Number(peer.y),distance=Math.max(1,Math.hypot(dx,dy)),target={x:Number(peer.x)+dx/distance*82,y:Number(peer.y)+dy/distance*82},stage=document.querySelector('#screen-'+active+' .stage'),doctor=document.querySelector('#screen-'+active+' .doctor:not(.remoteDoctor)');
+ const stage=document.querySelector('#screen-'+active+' .stage'),doctor=document.querySelector('#screen-'+active+' .doctor:not(.remoteDoctor)');
  const blocked=active==='primary'?(x,y)=>primaryBlocked(x,y,null):active==='secondary'?secondaryBlocked:active==='treatment'?(x,y)=>treatmentBlocked(x,y,null):active==='loading'?loadingBlocked:parkingBlocked;
- walk(stage,doctor,cur,target,blocked,1500,950,function(){const latest=(snap.positions||{})[clientId],me=pos();if(!latest||latest.scene!==curScene||Math.hypot(Number(me.x)-Number(latest.x),Number(me.y)-Number(latest.y))>145){toast('เพื่อนเดินออกไปแล้ว กรุณากดใหม่');return}openFriendTransfer(clientId)});
+ if(Math.hypot(cur.x-peer.x,cur.y-peer.y)<=125){emit(true);openFriendTransfer(clientId);return;}
+ const candidates=[];
+ for(let i=0;i<16;i++){const angle=i*Math.PI/8,p={x:Number(peer.x)+Math.cos(angle)*88,y:Number(peer.y)+Math.sin(angle)*88};if(!blocked(p.x,p.y))candidates.push(p);}
+ candidates.sort((a,b)=>Math.hypot(cur.x-a.x,cur.y-a.y)-Math.hypot(cur.x-b.x,cur.y-b.y));
+ const target=candidates.find(p=>pathfind(cur,p,blocked,1500,950,22).length);
+ if(!target){toast('ไม่มีทางเดินถึงผู้รับ กรุณาให้เพื่อนขยับออกจากเตียง');return;}
+
+ walk(stage,doctor,cur,target,blocked,1500,950,function(){const latest=(snap.positions||{})[clientId],me=pos();if(!latest||latest.scene!==curScene||Math.hypot(Number(me.x)-Number(latest.x),Number(me.y)-Number(latest.y))>145){toast('เพื่อนเดินออกไปแล้ว กรุณากดใหม่');return}emit(true);openFriendTransfer(clientId)});
 }
 function peerEl(key,gender){const e=document.createElement('div');e.className='doctor remoteDoctor'+(String(gender||'').toUpperCase()==='FEMALE'?' femaleDoctor':'');e.dataset.client=key;e.innerHTML='<div class="head"></div><div class="hair"></div><div class="torso"></div><div class="legs"></div><div class="nameTag"></div>';e.style.transition='left .12s linear,top .12s linear';e.onclick=event=>{event.stopPropagation();walkToFriend(e.dataset.client)};return e}`;
-  source=source.replace(oldPeer,newPeer);
+  source=source.replace(/function peerEl\(key,gender\)\{[^\n]*\}/,newPeer);
   source=source.replace("function names(){document.querySelectorAll('.doctor:not(.remoteDoctor)').forEach(d=>{d.classList.toggle('femaleDoctor',", "function names(){const isHead=(snap.headNames||[]).indexOf(snap.name)>-1;document.querySelectorAll('.doctor:not(.remoteDoctor)').forEach(d=>{d.classList.toggle('zoneHeadDoctor',isHead);d.classList.toggle('femaleDoctor',");
   source=source.replace("e.classList.toggle('femaleDoctor',String(q.gender||'MALE').toUpperCase()==='FEMALE');e.dataset.peerName", "e.classList.toggle('zoneHeadDoctor',(snap.headNames||[]).indexOf(q.name)>-1);e.classList.toggle('femaleDoctor',String(q.gender||'MALE').toUpperCase()==='FEMALE');e.dataset.peerName");
   source=source.replace('MCI 2D Complete Game v5.5 · Mobility + Cooperative Treatment','MCI 2D Complete Game v6.5 · Radio–Backpack Alignment');
   source=source.replace("setInterval(()=>emit(false),80);", "document.addEventListener('click',()=>send('uiOpen',{}),true);setInterval(()=>emit(false),80);");
+  source=source.replace("bagTransferPending=true;renderFriendTransfer();send('transferCarriedItem'", "bagTransferPending=true;renderFriendTransfer();emit(true);send('transferCarriedItem'");
   return source;
 }
 function decodeTwoDFrameSource(){const raw=atob(TWO_D_FRAME_SOURCE_B64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);const source=new TextDecoder('utf-8').decode(bytes).replace(/\n\/\* Dynamic-zone v7: Holding was removed from the game model\. \*\/\n#secondaryStage \.secHold,#treatmentStage \.holdingArea\{display:none!important\}\n#treatmentStage \.tRoom:after\{content:"8 ACTIVE CARE BAYS • CAPACITY 8"!important\}\n/,'');return patchTwoDFrameSource(source)}
@@ -8834,7 +8856,7 @@ function viewHospitalBase(){
   const returnAnimations=fleet.slice(0,8).filter(function(x){return Number(x.v.hospitalReturnedAtMs||0)>0&&now-Number(x.v.hospitalReturnedAtMs)<HOSPITAL_CALL_DRIVE_MS;}).map(function(x){const i=Math.max(0,fleet.findIndex(function(q){return q.v.name===x.v.name;})),savedLeft=Number(x.v.hospitalReturnFromLeft),fromLeft=Number.isFinite(savedLeft)&&savedLeft>0?savedLeft:104,endY=parkingTops[Math.min(7,i)]+3.05,startAngle=fromLeft<100?90:-90;return'<img class="hospital-route-vehicle returning" data-route-kind="return" data-start-x="'+fromLeft+'" data-start-y="'+HOSPITAL_ROAD_CENTER_Y+'" data-end-x="'+HOSPITAL_PARKED_CENTER_X+'" data-end-y="'+endY.toFixed(3)+'" data-start-ms="'+Number(x.v.hospitalReturnedAtMs)+'" data-duration-ms="'+HOSPITAL_CALL_DRIVE_MS+'" data-start-height="'+HOSPITAL_ROAD_ART_HEIGHT+'" data-end-height="'+HOSPITAL_PARKED_ART_HEIGHT+'" data-start-angle="'+startAngle+'" data-end-angle="90" src="'+esc(startVehicleAsset(x.v))+'" alt="รถกลับเข้าช่อง '+(i+1)+' ของ '+esc(home)+'">';}).join('');
   const waiting=roadCalled.slice(0,HOSPITAL_ROAD_CAPACITY).map(function(v,i){const s=normalizedVehicleStart(v),full=s.crew.length>=START_VEHICLE_SEATS&&s.crew.indexOf(STATE.me.name)<0,age=s.roadEnteredAtMs?now-s.roadEnteredAtMs:99999,arriving=age<HOSPITAL_CALL_DRIVE_MS,delay=Math.max(0,HOSPITAL_CALL_DRIVE_MS-age),cannotReturn=arriving||s.manifestLocked||s.crew.length>0,left=hospitalRoadQueueLeft(i);return'<div class="hospital-waiting-vehicle '+(arriving?'arriving':'')+'" data-vehicle="'+esc(v.name)+'" data-queue-left="'+left+'" style="left:'+left+'%;'+(arriving?'animation-delay:'+delay+'ms':'')+'"><img src="'+esc(startVehicleAsset(v))+'" alt=""><span class="hospital-waiting-label">'+esc(v.name)+' · '+s.crew.length+'/'+START_VEHICLE_SEATS+(arriving?' · กำลังเข้าจอด':'')+'</span><div class="hospital-waiting-actions"><button type="button" class="btn sm primary" data-act="hospitalVehicleBoard" data-vehicle="'+esc(v.name)+'" '+(full||arriving?'disabled':'')+'>ขึ้นรถ</button><button type="button" class="btn sm ghost" data-act="hospitalVehicleReturn" data-vehicle="'+esc(v.name)+'" '+(cannotReturn?'disabled':'')+'>คืนเข้าที่จอด</button></div></div>';}).join('');
   const commander=activeCommanderName(STATE.roster),commandButton=noVehicleStart&&!commander?'<button class="btn primary" data-act="selfCommander">ฉันคือ Command</button>':(noVehicleStart&&commander?'<span class="badge ok">Command: '+esc(commander)+'</span>':'');
-  const readyPanel=noVehicleStart?'<div class="hospital-staging-ready '+(myRoster.stagingReady?'ready':'')+'"><span class="badge '+(myRoster.stagingReady?'ok':'neutral')+'">'+(myRoster.stagingReady?'พร้อม · Command เห็นสีเขียว':'ยังไม่พร้อม')+'</span><button class="btn '+(myRoster.stagingReady?'ghost':'primary')+'" data-act="hospitalStagingReady">'+(myRoster.stagingReady?'ยกเลิกพร้อม':'✓ พร้อมปฏิบัติงาน')+'</button>'+commandButton+'</div>':'';
+  const readyPanel=noVehicleStart?'<div class="hospital-staging-ready '+(myRoster.stagingReady?'ready':'')+'"><span class="badge '+(myRoster.stagingReady?'ok':'neutral')+'">'+(myRoster.stagingReady?'พร้อม · Command เห็นสีเขียว':'ยังไม่พร้อม')+'</span><button class="btn '+(myRoster.stagingReady?'ghost':'primary')+'" data-act="hospitalStagingReady" '+(hospitalReadyPending?'disabled aria-busy="true"':'')+'>'+(hospitalReadyPending?'กำลังบันทึก…':myRoster.stagingReady?'ยกเลิกพร้อม':'✓ พร้อมปฏิบัติงาน')+'</button>'+commandButton+'</div>':'';
   return'<div class="startgame-shell">'+startgameTopbar(home,'PLAYER STAGING · HOSPITAL SUPPLY')+'<div class="startgame-world-viewport"><div class="hospital-base-stage '+(noVehicleStart?'no-vehicle-start':'')+'" data-start-world="hospital_base"><button type="button" class="hospital-hotspot supply" data-act="hospitalSupplyOpen" aria-label="เดินไปเปิด Hospital Supply"></button>'+parking+animations+returnAnimations+waiting+((window.MCIPhone&&MCIPhone.isPhone())?'':readyPanel)+'<div class="start-world-players"></div><div class="hospital-wait-status">'+esc(status)+'</div><div class="hospital-help">'+(noVehicleStart?'ไม่มีรถสำหรับ Player · กดพร้อมแล้วรอ Commander ส่งตรงเข้าเต็นท์':'รถออกจากลาน ผ่านประตูกลาง แล้วเลี้ยวขวา · คันแรกจอดขวาสุด · BUS มาจากศูนย์รถสนับสนุนภายนอก')+'</div></div></div>'+((window.MCIPhone&&MCIPhone.isPhone())?'<div class="mci-ready-dock">'+readyPanel+'</div>':'')+startgamePlayerOverlays()+'</div>';
 }
 function viewALSInterior(vehicle){
