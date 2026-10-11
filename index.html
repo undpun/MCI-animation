@@ -2967,23 +2967,52 @@ function mciRepairInitialSupply(root){
 }
 let mciPresenceFrame=0,mciHeartbeatBinding=null,mciLeaderTimer=null,mciLeaseBusy=false,mciLeaseUntil=0,mciLeaderRef=null;
 let mciPresenceFull=false,mciPresenceChanged=new Set();
-let mciOfflineArmed=null,mciOfflineBusy=new Set(),mciOfflinePending=new Map();
+const MCI_OFFLINE_GRACE_MS=5*60*1000;
+let mciOfflineArmed=null,mciOfflineToken=null,mciNeedsResume=false,mciDisconnectedAt=0,mciResumePosition=null,mciOfflineBusy=new Set(),mciOfflinePending=new Map();
+function mciReconnectOverlay(show){let el=document.getElementById('mciReconnectOverlay');if(!show){if(el)el.remove();return;}if(!el){el=document.createElement('div');el.id='mciReconnectOverlay';el.style.cssText='position:fixed;inset:0;z-index:999999;background:#08131bf0;color:white;display:grid;place-content:center;text-align:center;padding:24px;font:18px system-ui';el.textContent='กำลังเชื่อมต่อกลับ… เก็บหน้าที่เดิมไว้ 5 นาที';document.body.appendChild(el);}}
+function mciSuspendPlayer(){if(!STATE.me.name||STATE.me.gmAuthorized)return;mciDisconnectedAt=mciDisconnectedAt||sharedNowMs();mciResumePosition=twoDLastPosition;mciNeedsResume=true;saveLocalSession();stopPolling();mciOfflineArmed=null;mciReconnectOverlay(true);}
+async function mciResumePlayer(){
+  if(!mciNeedsResume||STATE.me.gmAuthorized)return true;
+  mciReconnectOverlay(true);
+  const name=STATE.me.name,id=STATE.me.clientId,session=identitySession;
+  const snaps=await Promise.all([fbDb.ref(DB_ROOT+'/'+KEYS.roster).once('value'),fbDb.ref(PRESENCE_ROOT+'/offlineSessions/'+id).once('value'),fbDb.ref(PRESENCE_ROOT+'/heartbeats/'+id).once('value')]);
+  if(session!==identitySession)return false;
+  const roster=mciDecode(snaps[0].val())||{},entry=roster[name],notice=snaps[1].val(),hb=snaps[2].val();
+  const currentNotice=notice&&entry&&(!notice.token||notice.token===entry.connectionToken)?notice:null;
+  const since=mciDisconnectedAt||Number(currentNotice&&currentNotice.at)||Number(hb&&hb.at)||Number(entry&&entry.lastSeen)||0;
+  if(!entry||entry.clientId!==id||sharedNowMs()-since>=MCI_OFFLINE_GRACE_MS){mciExpireLocalPlayer();return false;}
+  mciOfflineArmed=null;mciOfflineToken=makeClientId();await mciArmOfflineSession(name,id);
+  const token=mciOfflineToken,previousToken=entry.connectionToken;
+  const updated=await kvRosterUpdate(function(rows){const cur=rows[name];if(session!==identitySession||!cur||cur.clientId!==id||cur.connectionToken!==previousToken||sharedNowMs()-since>=MCI_OFFLINE_GRACE_MS)return null;return Object.assign({},rows,{[name]:Object.assign({},cur,{connectionToken:token,lastSeen:sharedNowMs()})});});
+  if(session!==identitySession)return false;
+  if(!updated[name]||updated[name].connectionToken!==token){mciExpireLocalPlayer();return false;}
+  STATE.roster=updated;mciNeedsResume=false;mciDisconnectedAt=0;twoDLastNavigateScene='';
+  // Remove only the disconnect notice we actually observed; a newer one must survive.
+  if(notice)await fbDb.ref(PRESENCE_ROOT+'/offlineSessions/'+id).transaction(function(cur){return cur&&cur.at===notice.at&&cur.token===notice.token?null:undefined;},undefined,false);
+  await mciWriteHeartbeat();if(session!==identitySession||mciNeedsResume||STATE.fbConnected===false)return false;
+  if(twoDLastPosition)queueTwoDPosition(twoDLastPosition,true);
+  saveLocalSession();mciReconnectOverlay(false);return true;
+}
 function mciQueueOfflineSession(id,notice){if(!id||!notice||!notice.name)return;mciOfflinePending.set(id,notice);if(mciOwnsLeader())mciRemoveOfflineSession(id,notice);}
 async function mciArmOfflineSession(name,clientId){
   if(mciOfflineArmed===clientId)return;
+  if(!mciOfflineToken)mciOfflineToken=makeClientId();
   const updates={};updates['heartbeats/'+clientId]=null;updates['positions/'+clientId]=null;
-  updates['offlineSessions/'+clientId]={name:name,at:firebase.database.ServerValue.TIMESTAMP};
+  updates['offlineSessions/'+clientId]={name:name,token:mciOfflineToken,at:firebase.database.ServerValue.TIMESTAMP};
   await fbDb.ref(PRESENCE_ROOT).onDisconnect().update(updates);
   if(STATE.me.clientId===clientId)mciOfflineArmed=clientId;
 }
 async function mciRemoveOfflineSession(clientId,notice){
   if(clientId&&notice&&notice.name)mciOfflinePending.set(clientId,notice);
   if(!clientId||!notice||!notice.name||!fbReady||STATE.fbConnected===false||mciOfflineBusy.has(clientId))return;
+  if(sharedNowMs()-Number(notice.at||sharedNowMs())<MCI_OFFLINE_GRACE_MS)return;
   mciOfflineBusy.add(clientId);
   try{
     const result=await kvRootTransaction(function(root){
       const roster=root[KEYS.roster]||{},entry=roster[notice.name];
       if(!entry||entry.clientId!==clientId||entry.station==='GM')return null;
+      if(notice.token&&entry.connectionToken!==notice.token)return null;
+      if(!notice.token&&Number(entry.lastSeen)>Number(notice.at))return null;
       const gc=root[KEYS.gc]||STATE.gc,elapsed=elapsedMinutes(gc),next=Object.assign({},roster);delete next[notice.name];root[KEYS.roster]=next;
       const locks=root[KEYS.locks]||{},remaining={};Object.keys(locks).forEach(function(id){if(!locks[id]||locks[id].clientId!==clientId)remaining[id]=locks[id];});root[KEYS.locks]=remaining;
       if(gc.status==='RUNNING')root[KEYS.gc]=gcWithParticipantEvent(gc,notice.name,entry.station,elapsed,'OFFLINE',notice.name);
@@ -2993,8 +3022,8 @@ async function mciRemoveOfflineSession(clientId,notice){
     if(result.error)return;
     // A delayed notice can only clean up its own session, never a new login.
     const remaining=result.root&&result.root[KEYS.roster],entry=remaining&&remaining[notice.name];
-    if(!result.committed&&(!remaining||(entry&&entry.clientId===clientId&&entry.station!=='GM')))return;
-    await fbDb.ref(PRESENCE_ROOT+'/offlineSessions/'+clientId).remove();
+    if(!result.committed&&(!remaining||(entry&&entry.clientId===clientId&&entry.station!=='GM'&&(!notice.token||entry.connectionToken===notice.token)&&Number(entry.lastSeen)<=Number(notice.at))))return;
+    await fbDb.ref(PRESENCE_ROOT+'/offlineSessions/'+clientId).transaction(function(cur){return cur&&cur.at===notice.at&&cur.token===notice.token?null:undefined;},undefined,false);
     mciOfflinePending.delete(clientId);
     if(result.committed){delete STATE.positions[clientId];mciPeerRefresh(clientId);scheduleCommunicationHeadMaintenance(50);}
   }catch(e){console.warn('Offline roster cleanup will retry',e&&e.message);}finally{mciOfflineBusy.delete(clientId);}
@@ -3007,6 +3036,7 @@ function mciExpireLocalPlayer(){
   if(!STATE.me.name||STATE.me.gmAuthorized)return;
   startWorldCancelMovement(currentStartWorldScene());
   identitySession+=1;stopPolling();mciOfflineArmed=null;
+  mciNeedsResume=false;mciDisconnectedAt=0;mciOfflineToken=null;mciReconnectOverlay(false);
   STATE.me.name=null;STATE.me.station=null;STATE.me.clientId=null;STATE.me.gmAuthorized=false;
   if(STATE.ui.twoD)STATE.ui.twoD={activeZone:null,activeTentId:null,panelOpen:false,walking:false};
   STATE.ui.startPanel=null;STATE.ui.startFriendClientId=null;
@@ -3032,15 +3062,15 @@ function mciStartPresenceListener(session){
   const heartbeatRef=fbDb.ref(PRESENCE_ROOT+'/heartbeats');
   const heartbeatHandler=function(snap){const hb=snap.val();if(!hb||!hb.name)return;const r=STATE.roster[hb.name];if(r&&r.clientId===snap.key)r.lastSeen=Number(hb.at)||r.lastSeen;};
   ['child_added','child_changed'].forEach(function(event){heartbeatRef.on(event,heartbeatHandler);realtimeBindings.push({ref:heartbeatRef,event:event,handler:heartbeatHandler});});
-  const removedHeartbeat=function(snap){if(session===identitySession)mciQueueOfflineSession(snap.key,snap.val());};
-  heartbeatRef.on('child_removed',removedHeartbeat);realtimeBindings.push({ref:heartbeatRef,event:'child_removed',handler:removedHeartbeat});
+  // offlineSessions carries the server disconnect time, not the last heartbeat time.
   const offlineRef=fbDb.ref(PRESENCE_ROOT+'/offlineSessions'),offlineHandler=function(snap){if(session===identitySession)mciQueueOfflineSession(snap.key,snap.val());};
   offlineRef.on('child_added',offlineHandler);realtimeBindings.push({ref:offlineRef,event:'child_added',handler:offlineHandler});
+  offlineRef.on('child_changed',offlineHandler);realtimeBindings.push({ref:offlineRef,event:'child_changed',handler:offlineHandler});
   const offlineRemoved=function(snap){mciOfflinePending.delete(snap.key);};offlineRef.on('child_removed',offlineRemoved);realtimeBindings.push({ref:offlineRef,event:'child_removed',handler:offlineRemoved});
   realtimeInitial.positions=true;mciWriteHeartbeat();
 }
 async function mciWriteHeartbeat(){
-  if(!fbReady||!STATE.me.name||!STATE.me.clientId)return;
+  if(!fbReady||!STATE.me.name||!STATE.me.clientId||mciNeedsResume)return;
   const name=STATE.me.name,id=STATE.me.clientId,session=identitySession,ref=fbDb.ref(PRESENCE_ROOT+'/heartbeats/'+id);
   try{
     if(!STATE.me.gmAuthorized)await mciArmOfflineSession(name,id);else await ref.onDisconnect().remove();
@@ -3096,7 +3126,7 @@ function fbInit(){
     const app = firebase.initializeApp(FIREBASE_CONFIG);
     fbDb = firebase.database();
     fbDb.ref('.info/serverTimeOffset').on('value',function(snap){firebaseServerOffsetMs=Number(snap.val()||0);});
-    fbDb.ref('.info/connected').on('value',function(snap){const connected=!!snap.val();setFirebaseConnection(connected);if(!connected&&mciOfflineArmed)mciExpireLocalPlayer();});
+    fbDb.ref('.info/connected').on('value',function(snap){const connected=!!snap.val();setFirebaseConnection(connected);if(!connected&&mciOfflineArmed)mciSuspendPlayer();else if(connected&&mciNeedsResume&&STATE.me.name)startPolling();});
     fbReady = true;
   }catch(e){
     console.error('Firebase init failed', e);
@@ -5153,27 +5183,30 @@ function saveLocalSession(){
        sessionStorage. They are intentionally ephemeral and never copied into
        the browser session cache. */
     delete sessionUi.caseSafety;
-    sessionStorage.setItem(SESSION_KEY,JSON.stringify({
+    const savedSession=JSON.stringify({
       name:STATE.me.name,
       gender:STATE.me.gender,
       gmAuthorized:!!STATE.me.gmAuthorized,
       clientId:STATE.me.clientId,
+      disconnectedAt:mciDisconnectedAt,position:twoDLastPosition,
       gmTab:STATE.gmTab,
       ui:sessionUi
-    }));
+    });sessionStorage.setItem(SESSION_KEY,savedSession);if(!STATE.me.gmAuthorized)localStorage.setItem(SESSION_KEY+'_resume',savedSession);
   }catch(e){}
 }
 function restoreLocalSession(){
   try{
-    const raw=sessionStorage.getItem(SESSION_KEY);
+    const raw=sessionStorage.getItem(SESSION_KEY)||localStorage.getItem(SESSION_KEY+'_resume');
     if(!raw)return false;
     const saved=JSON.parse(raw);
     if(!saved||!saved.name)return false;
-    if(!saved.gmAuthorized){clearLocalSession();return false;}
+    if(!saved.gmAuthorized){mciNeedsResume=true;mciDisconnectedAt=Number(saved.disconnectedAt)||0;}
     STATE.me.name=String(saved.name);
     STATE.me.gender=String(saved.gender||'').toUpperCase()==='FEMALE'?'FEMALE':'MALE';
     STATE.me.gmAuthorized=!!saved.gmAuthorized;
     STATE.me.clientId=saved.clientId?String(saved.clientId):makeClientId();
+    if(saved.position&&saved.position.scene){twoDLastPosition=saved.position;mciResumePosition=saved.position;}
+    if(saved.ui)STATE.ui=Object.assign({},STATE.ui,saved.ui);
     if(saved.gmTab)STATE.gmTab=saved.gmTab;
     if(saved.ui&&saved.ui.focused)STATE.ui.focused=Object.assign({},STATE.ui.focused,saved.ui.focused);
     if(saved.ui&&saved.ui.twoD)STATE.ui.twoD=Object.assign({},STATE.ui.twoD,saved.ui.twoD,{walking:false});
@@ -5190,7 +5223,7 @@ function restoreLocalSession(){
   }catch(e){return false;}
 }
 function clearLocalSession(){
-  try{sessionStorage.removeItem(SESSION_KEY);}catch(e){}
+  try{sessionStorage.removeItem(SESSION_KEY);localStorage.removeItem(SESSION_KEY+'_resume');}catch(e){}
 }
 function setFocusedPatient(key,id){
   if(!STATE.ui.focused[key])STATE.ui.focused[key]=null;
@@ -6307,6 +6340,7 @@ function startPolling(){
   const session = identitySession;
   const foundation=firebaseFoundationReady?Promise.resolve(true):ensureSeeded();
   foundation.then(async function(){
+    if(mciNeedsResume&&!await mciResumePlayer())return;
     if(!await refreshAll())return;
     if(!await mciPreloadCurrentAssets())return;
     if(session===identitySession){startRealtimeListeners(session);mciStartLeader();}
@@ -6321,6 +6355,7 @@ function startPolling(){
     if(mciOwnsLeader())mciOfflinePending.forEach(function(notice,id){mciRemoveOfflineSession(id,notice);});
     refreshMyPatientLocks();
     touchTwoDPosition();
+    saveLocalSession();
     scheduleCommunicationHeadMaintenance(400);
   }, 15000);
   clockTimer = setInterval(function(){
@@ -6376,7 +6411,7 @@ async function joinAsPlayer(name, gender, asGM, asCommander, gmPassword, selecte
   STATE.me.gender = gender;
   STATE.me.gmAuthorized = !!asGM;
   if(asGM){STATE.gmTab=currentGc.status==='NOT_STARTED'?'settings':'control';STATE._gmTabInitialized=true;}else STATE._gmTabInitialized=false;
-  if(!asGM||!STATE.me.clientId)STATE.me.clientId=makeClientId();
+  if(!asGM||!STATE.me.clientId)STATE.me.clientId=makeClientId();mciOfflineToken=makeClientId();mciNeedsResume=false;mciDisconnectedAt=0;
   identitySession += 1;
   const joinSession=identitySession,joinClientId=STATE.me.clientId;
   if(!asGM){try{await mciArmOfflineSession(name,joinClientId);}catch(e){mciExpireLocalPlayer();return;}}
@@ -6390,7 +6425,7 @@ async function joinAsPlayer(name, gender, asGM, asCommander, gmPassword, selecte
     joinedStation=asGM ? 'GM' : 'HOSPITAL_BASE';
     const deployment=asGM?'GM':'HOSPITAL';
     const homeHospital=asGM?normalizeStartHospital(cur&&cur.homeHospital,'Hospital A'):normalizeStartHospital(selectedHospital,normalizeStartHospital(cur&&cur.homeHospital,'Hospital A'));
-    next[name] = Object.assign({},asGM?(cur||{}):{},{station:joinedStation,gender:gender,lastSeen:Date.now(),clientId:joinClientId,homeHospital:homeHospital,deploymentStatus:deployment,assignedVehicle:null,vehicleReady:false});
+    next[name] = Object.assign({},asGM?(cur||{}):{},{station:joinedStation,gender:gender,lastSeen:Date.now(),clientId:joinClientId,connectionToken:mciOfflineToken,homeHospital:homeHospital,deploymentStatus:deployment,assignedVehicle:null,vehicleReady:false});
     return next;
   });
   if(joinSession!==identitySession)return;
@@ -8430,6 +8465,7 @@ function twoDPlayerPayload(){
     hospitals:(STATE.hospitals||[]).map(function(h){return{name:h.name,outboundMin:h.outboundMin,distanceMin:h.distanceMin,redFree:Math.max(0,Number(h.redCap||0)-Number(h.redUsed||0)),yellowFree:Math.max(0,Number(h.yellowCap||0)-Number(h.yellowUsed||0)),greenFree:Math.max(0,Number(h.greenCap||0)-Number(h.greenUsed||0))};}),positions:STATE.positions||{}};
 }
 function patchTwoDFrameSource(source){
+  source=source.replace("silent=false;names();peers();emit(true)}if(m.type==='txExit')", "silent=false;const restored=(m.payload||{}).resumePosition;if(restored&&restored.scene===sceneKey()&&Number.isFinite(Number(restored.x))&&Number.isFinite(Number(restored.y))){Object.assign(pos(),{x:Number(restored.x),y:Number(restored.y)});placeDoctor('#screen-'+active+' .doctor:not(.remoteDoctor)',pos());}names();peers();emit(true)}if(m.type==='txExit')");
   // Keep vehicle animation time monotonic across Firebase snapshot updates.
   source=source.replace("function sharedMotionNow(){return Number(window.__vehicleServerNowMs||Date.now())+(performance.now()-Number(window.__vehicleSyncPerf||performance.now()))}",
     "let vehicleClockOffset=null;function syncVehicleClock(serverNow){const target=Number(serverNow||Date.now())-performance.now();if(vehicleClockOffset===null||Math.abs(target-vehicleClockOffset)>5000)vehicleClockOffset=target;else vehicleClockOffset+=Math.max(-12,Math.min(12,(target-vehicleClockOffset)*.12));}function sharedMotionNow(){return performance.now()+(vehicleClockOffset===null?Date.now()-performance.now():vehicleClockOffset)}");
@@ -8559,7 +8595,7 @@ function updateTwoDPlayerHost(){
   twoDNonPlayerPresenceCleared=false;
   if(!f.dataset.mounted){f.dataset.mounted='1';f.style.opacity='0';f.srcdoc=decodeTwoDFrameSource();twoDFrameReady=false;twoDLastNavigateScene='';f.addEventListener('load',()=>{twoDFrameReady=true;twoDLastSync='';twoDLastNavigateScene='';updateTwoDPlayerHost()},{once:true});return;}
   if(!twoDFrameReady)return;
-  if(targetScene!==twoDLastNavigateScene){twoDLastNavigateScene=targetScene;f.style.opacity='0';twoDFramePost('navigate',{scene:targetScene});setTimeout(function(){const current=(STATE.ui.twoD&&STATE.ui.twoD.activeZone)||twoDZoneForStation(STATE.me.station),scene=current&&TWO_D_ZONES[current]?TWO_D_ZONES[current].scene:null;if(scene===targetScene&&!host.classList.contains('hidden')&&f.style.opacity!=='1')f.style.opacity='1';},550);}
+  if(targetScene!==twoDLastNavigateScene){twoDLastNavigateScene=targetScene;f.style.opacity='0';twoDFramePost('navigate',{scene:targetScene,resumePosition:mciResumePosition&&mciResumePosition.scene===targetScene?mciResumePosition:null});mciResumePosition=null;setTimeout(function(){const current=(STATE.ui.twoD&&STATE.ui.twoD.activeZone)||twoDZoneForStation(STATE.me.station),scene=current&&TWO_D_ZONES[current]?TWO_D_ZONES[current].scene:null;if(scene===targetScene&&!host.classList.contains('hidden')&&f.style.opacity!=='1')f.style.opacity='1';},550);}
   const q=twoDPlayerPayload(),sig=JSON.stringify(q);if(sig!==twoDLastSync){twoDLastSync=sig;twoDFramePost('sync',q)}
 }
 function armTwoDPositionDisconnect(){if(fbReady&&STATE.me.clientId&&STATE.me.station!=='GM'&&STATE.me.station!=='COMMANDER')try{fbDb.ref(PRESENCE_ROOT+'/'+KEYS.positions+'/'+STATE.me.clientId).onDisconnect().remove()}catch(e){}}
@@ -11930,7 +11966,8 @@ function mciVehicleAudioSnapshot(){
 if(window.MCIAudio)MCIAudio.setProviders(mciLocalAudioSnapshot,mciVehicleAudioSnapshot);
 document.addEventListener('click',function(e){if(!window.MCIAudio)return;const btn=e.target.closest('[data-act]');if(btn&&['clinicalCheck','txStart','supplyTake','supplyReturn'].includes(btn.dataset.act))MCIAudio.cue('treatment');},true);
 
-document.documentElement.dataset.mciVersion='6.21.0';
+window.addEventListener('pagehide',function(){if(STATE.me.name)saveLocalSession();});
+document.documentElement.dataset.mciVersion='6.22.0';
 boot();
 })();
 

@@ -1,4 +1,4 @@
-const CACHE_VERSION='mci-2d-v6.21-offline-roster-1';
+const CACHE_VERSION='mci-2d-v6.22-reconnect-grace-1';
 const APP_SHELL=[
   './',
   './index.html',
