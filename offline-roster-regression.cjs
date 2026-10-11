@@ -20,6 +20,16 @@ async function test(){
  const saved={name:'Pun',clientId:'old',position:{scene:'treatment-red',x:450,y:350},ui:{twoD:{activeZone:'TX_RED',detailPatientId:'P1'},startPanel:'bag'}};
  const d=fixture();Object.assign(d.ctx,{sessionStorage:{getItem:()=>JSON.stringify(saved)},localStorage:{getItem:()=>null},SESSION_KEY:'session'});vm.runInContext(between('function restoreLocalSession(){','function clearLocalSession(){'),d.ctx);assert(d.ctx.restoreLocalSession());assert.equal(d.ctx.STATE.ui.twoD.detailPatientId,'P1');assert.equal(d.ctx.twoDLastPosition.x,450);
  vm.runInContext(between('function patchTwoDFrameSource(','function decodeTwoDFrameSource('),d.ctx);const encoded=html.match(/const TWO_D_FRAME_SOURCE_B64\s*=\s*['"]([^'"]+)/)[1],source=d.ctx.patchTwoDFrameSource(Buffer.from(encoded,'base64').toString());assert(source.includes('const restored=(m.payload||{}).resumePosition'));for(const m of source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))if(m[1].trim())new vm.Script(m[1]);
- console.log(JSON.stringify({withinFiveMinutes:'role and tent preserved',afterFiveMinutes:'expired',oldNotice:'ignored after reconnect',refresh:'screen, patient panel and position restored',iframeSyntax:'pass'},null,2));
+ const sweep=fixture();sweep.data.gc.status='WAITING';
+ sweep.data.roster={Old:{clientId:'old',lastSeen:1},OldGM:{clientId:'gm-old',station:'GM',lastSeen:1},Legacy:{lastSeen:1},Live:{clientId:'live',lastSeen:1},Grace:{clientId:'grace',lastSeen:1},Self:{clientId:'self',lastSeen:1}};
+ sweep.ctx.STATE.me={name:'Self',clientId:'self'};sweep.ctx.STATE.roster=structuredClone(sweep.data.roster);sweep.ctx.mciOwnsLeader=()=>true;
+ sweep.ctx.fbDb.ref=path=>({once:async()=>({val:()=>path==='game/roster'?structuredClone(sweep.data.roster):{heartbeats:{live:{at:999999}},offlineSessions:{grace:{at:999999}}}})});
+ vm.runInContext(between('let mciRosterSweepAt=','function mciOwnsLeader()'),sweep.ctx);await sweep.ctx.mciSweepStaleRoster();
+ assert(!sweep.data.roster.Old);assert(!sweep.data.roster.OldGM);assert(!sweep.data.roster.Legacy);assert(sweep.data.roster.Live);assert(sweep.data.roster.Grace);assert(sweep.data.roster.Self);
+ // A reconnect that races the sweep rotates its token and must survive.
+ sweep.data.roster.Race={clientId:'race',lastSeen:1,connectionToken:'before'};sweep.ctx.STATE.roster=structuredClone(sweep.data.roster);sweep.setNow(1020000);
+ const originalTxn=sweep.ctx.kvRootTransaction;sweep.ctx.kvRootTransaction=async cb=>{sweep.data.roster.Race.connectionToken='after';return originalTxn(cb);};
+ await sweep.ctx.mciSweepStaleRoster();assert(sweep.data.roster.Race);
+ console.log(JSON.stringify({withinFiveMinutes:'role and tent preserved',afterFiveMinutes:'expired',oldNotice:'ignored after reconnect',refresh:'screen, patient panel and position restored',iframeSyntax:'pass',staleSweep:'legacy and offline GM removed before game starts; live heartbeat, grace, self and concurrent reconnect preserved'},null,2));
 }
 test().catch(e=>{console.error(e);process.exitCode=1;});
