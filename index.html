@@ -3102,6 +3102,7 @@ async function mciSweepStaleRoster(){
       if(session!==identitySession||!mciOwnsLeader())return null;
       const roster=Object.assign({},root[KEYS.roster]||{}),locks=Object.assign({},root[KEYS.locks]||{});
       let gc=root[KEYS.gc]||STATE.gc,changed=false;
+      root[KEYS.roster]=roster;
       Object.keys(candidates).forEach(function(name){
         const seen=candidates[name],cur=roster[name];
         if(!cur||cur.clientId!==seen.clientId||cur.connectionToken!==seen.connectionToken||Number(cur.lastSeen||0)!==Number(seen.lastSeen||0))return;
