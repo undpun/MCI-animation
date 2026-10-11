@@ -2967,6 +2967,53 @@ function mciRepairInitialSupply(root){
 }
 let mciPresenceFrame=0,mciHeartbeatBinding=null,mciLeaderTimer=null,mciLeaseBusy=false,mciLeaseUntil=0,mciLeaderRef=null;
 let mciPresenceFull=false,mciPresenceChanged=new Set();
+let mciOfflineArmed=null,mciOfflineBusy=new Set(),mciOfflinePending=new Map();
+function mciQueueOfflineSession(id,notice){if(!id||!notice||!notice.name)return;mciOfflinePending.set(id,notice);if(mciOwnsLeader())mciRemoveOfflineSession(id,notice);}
+async function mciArmOfflineSession(name,clientId){
+  if(mciOfflineArmed===clientId)return;
+  const updates={};updates['heartbeats/'+clientId]=null;updates['positions/'+clientId]=null;
+  updates['offlineSessions/'+clientId]={name:name,at:firebase.database.ServerValue.TIMESTAMP};
+  await fbDb.ref(PRESENCE_ROOT).onDisconnect().update(updates);
+  if(STATE.me.clientId===clientId)mciOfflineArmed=clientId;
+}
+async function mciRemoveOfflineSession(clientId,notice){
+  if(clientId&&notice&&notice.name)mciOfflinePending.set(clientId,notice);
+  if(!clientId||!notice||!notice.name||!fbReady||STATE.fbConnected===false||mciOfflineBusy.has(clientId))return;
+  mciOfflineBusy.add(clientId);
+  try{
+    const result=await kvRootTransaction(function(root){
+      const roster=root[KEYS.roster]||{},entry=roster[notice.name];
+      if(!entry||entry.clientId!==clientId||entry.station==='GM')return null;
+      const gc=root[KEYS.gc]||STATE.gc,elapsed=elapsedMinutes(gc),next=Object.assign({},roster);delete next[notice.name];root[KEYS.roster]=next;
+      const locks=root[KEYS.locks]||{},remaining={};Object.keys(locks).forEach(function(id){if(!locks[id]||locks[id].clientId!==clientId)remaining[id]=locks[id];});root[KEYS.locks]=remaining;
+      if(gc.status==='RUNNING')root[KEYS.gc]=gcWithParticipantEvent(gc,notice.name,entry.station,elapsed,'OFFLINE',notice.name);
+      cancelActiveTreatmentsAfterStaffDeparture(root,notice.name,entry.station,elapsed);
+      return root;
+    });
+    if(result.error)return;
+    // A delayed notice can only clean up its own session, never a new login.
+    const remaining=result.root&&result.root[KEYS.roster],entry=remaining&&remaining[notice.name];
+    if(!result.committed&&(!remaining||(entry&&entry.clientId===clientId&&entry.station!=='GM')))return;
+    await fbDb.ref(PRESENCE_ROOT+'/offlineSessions/'+clientId).remove();
+    mciOfflinePending.delete(clientId);
+    if(result.committed){delete STATE.positions[clientId];mciPeerRefresh(clientId);scheduleCommunicationHeadMaintenance(50);}
+  }catch(e){console.warn('Offline roster cleanup will retry',e&&e.message);}finally{mciOfflineBusy.delete(clientId);}
+}
+async function mciDrainOfflineSessions(){
+  const snap=await fbDb.ref(PRESENCE_ROOT+'/offlineSessions').once('value'),notices=snap.val()||{};
+  for(const id of Object.keys(notices))await mciRemoveOfflineSession(id,notices[id]);
+}
+function mciExpireLocalPlayer(){
+  if(!STATE.me.name||STATE.me.gmAuthorized)return;
+  startWorldCancelMovement(currentStartWorldScene());
+  identitySession+=1;stopPolling();mciOfflineArmed=null;
+  STATE.me.name=null;STATE.me.station=null;STATE.me.clientId=null;STATE.me.gmAuthorized=false;
+  if(STATE.ui.twoD)STATE.ui.twoD={activeZone:null,activeTentId:null,panelOpen:false,walking:false};
+  STATE.ui.startPanel=null;STATE.ui.startFriendClientId=null;
+  twoDPendingPosition=null;twoDLastPosition=null;clearLocalSession();
+  if(window.MCIAudio)MCIAudio.update(null);
+  render(true);toast('การเชื่อมต่อสิ้นสุด กรุณาลงชื่อเข้าเกมใหม่','err');
+}
 function mciPeerRefresh(clientId){
   if(clientId)mciPresenceChanged.add(clientId);else mciPresenceFull=true;
   if(mciPresenceFrame)return;mciPresenceFrame=requestAnimationFrame(function(){mciPresenceFrame=0;
@@ -2985,13 +3032,21 @@ function mciStartPresenceListener(session){
   const heartbeatRef=fbDb.ref(PRESENCE_ROOT+'/heartbeats');
   const heartbeatHandler=function(snap){const hb=snap.val();if(!hb||!hb.name)return;const r=STATE.roster[hb.name];if(r&&r.clientId===snap.key)r.lastSeen=Number(hb.at)||r.lastSeen;};
   ['child_added','child_changed'].forEach(function(event){heartbeatRef.on(event,heartbeatHandler);realtimeBindings.push({ref:heartbeatRef,event:event,handler:heartbeatHandler});});
+  const removedHeartbeat=function(snap){if(session===identitySession)mciQueueOfflineSession(snap.key,snap.val());};
+  heartbeatRef.on('child_removed',removedHeartbeat);realtimeBindings.push({ref:heartbeatRef,event:'child_removed',handler:removedHeartbeat});
+  const offlineRef=fbDb.ref(PRESENCE_ROOT+'/offlineSessions'),offlineHandler=function(snap){if(session===identitySession)mciQueueOfflineSession(snap.key,snap.val());};
+  offlineRef.on('child_added',offlineHandler);realtimeBindings.push({ref:offlineRef,event:'child_added',handler:offlineHandler});
+  const offlineRemoved=function(snap){mciOfflinePending.delete(snap.key);};offlineRef.on('child_removed',offlineRemoved);realtimeBindings.push({ref:offlineRef,event:'child_removed',handler:offlineRemoved});
   realtimeInitial.positions=true;mciWriteHeartbeat();
 }
-function mciWriteHeartbeat(){
+async function mciWriteHeartbeat(){
   if(!fbReady||!STATE.me.name||!STATE.me.clientId)return;
-  const ref=fbDb.ref(PRESENCE_ROOT+'/heartbeats/'+STATE.me.clientId);
-  ref.onDisconnect().remove().catch(function(){});
-  ref.set({name:STATE.me.name,at:sharedNowMs()}).catch(function(e){setFirebaseConnection(false,e);});
+  const name=STATE.me.name,id=STATE.me.clientId,session=identitySession,ref=fbDb.ref(PRESENCE_ROOT+'/heartbeats/'+id);
+  try{
+    if(!STATE.me.gmAuthorized)await mciArmOfflineSession(name,id);else await ref.onDisconnect().remove();
+    if(session!==identitySession||STATE.me.clientId!==id)return;
+    await ref.set({name:name,at:sharedNowMs()});
+  }catch(e){setFirebaseConnection(false,e);}
 }
 function mciOwnsLeader(){return STATE.fbConnected!==false&&sharedNowMs()<mciLeaseUntil&&!!STATE.me.name;}
 async function mciRenewLeader(){
@@ -3000,7 +3055,7 @@ async function mciRenewLeader(){
   try{
     const ref=fbDb.ref(PRESENCE_ROOT+'/simulationLeader');mciLeaderRef=ref;
     const result=await ref.transaction(function(cur){if(cur&&cur.owner!==owner&&Number(cur.until)>now)return;return{owner:owner,until:now+10000};},undefined,false);
-    if(session===identitySession)mciLeaseUntil=result.committed&&result.snapshot.val().owner===owner?Number(result.snapshot.val().until):0;
+    if(session===identitySession){mciLeaseUntil=result.committed&&result.snapshot.val().owner===owner?Number(result.snapshot.val().until):0;if(mciOwnsLeader())mciOfflinePending.forEach(function(notice,id){mciRemoveOfflineSession(id,notice);});}
   }catch(e){mciLeaseUntil=0;}finally{mciLeaseBusy=false;}
 }
 function mciStartLeader(){if(mciLeaderTimer)return;mciRenewLeader();mciLeaderTimer=setInterval(mciRenewLeader,3000);}
@@ -3041,7 +3096,7 @@ function fbInit(){
     const app = firebase.initializeApp(FIREBASE_CONFIG);
     fbDb = firebase.database();
     fbDb.ref('.info/serverTimeOffset').on('value',function(snap){firebaseServerOffsetMs=Number(snap.val()||0);});
-    fbDb.ref('.info/connected').on('value',function(snap){setFirebaseConnection(!!snap.val());});
+    fbDb.ref('.info/connected').on('value',function(snap){const connected=!!snap.val();setFirebaseConnection(connected);if(!connected&&mciOfflineArmed)mciExpireLocalPlayer();});
     fbReady = true;
   }catch(e){
     console.error('Firebase init failed', e);
@@ -5114,6 +5169,7 @@ function restoreLocalSession(){
     if(!raw)return false;
     const saved=JSON.parse(raw);
     if(!saved||!saved.name)return false;
+    if(!saved.gmAuthorized){clearLocalSession();return false;}
     STATE.me.name=String(saved.name);
     STATE.me.gender=String(saved.gender||'').toUpperCase()==='FEMALE'?'FEMALE':'MALE';
     STATE.me.gmAuthorized=!!saved.gmAuthorized;
@@ -5889,6 +5945,7 @@ async function refreshAll(){
 function applyRosterIdentity(){
   if(!STATE.me.name)return;
   const entry=STATE.roster[STATE.me.name];
+  if(mciOfflineArmed&&!STATE.me.gmAuthorized&&(!entry||entry.clientId!==STATE.me.clientId)){mciExpireLocalPlayer();return;}
   if(entry&&entry.gender)STATE.me.gender=String(entry.gender).toUpperCase()==='FEMALE'?'FEMALE':'MALE';
   let assignedStation=entry?entry.station:null;
   if(entry&&entry.station!=='GM'&&!entry.deploymentStatus&&STATE.gc.status==='NOT_STARTED')assignedStation='HOSPITAL_BASE';
@@ -6261,6 +6318,7 @@ function startPolling(){
     const activeName = STATE.me.name;
     if(!activeName || session!==identitySession) return;
     mciWriteHeartbeat();
+    if(mciOwnsLeader())mciOfflinePending.forEach(function(notice,id){mciRemoveOfflineSession(id,notice);});
     refreshMyPatientLocks();
     touchTwoDPosition();
     scheduleCommunicationHeadMaintenance(400);
@@ -6307,6 +6365,7 @@ async function joinAsPlayer(name, gender, asGM, asCommander, gmPassword, selecte
     return;
   }
   try{await ensureSeeded();}catch(e){toast('เชื่อมต่อข้อมูลเกมไม่สำเร็จ กรุณาลองใหม่','err');return;}
+  try{await mciDrainOfflineSessions();}catch(e){toast('ตรวจสอบผู้เล่นที่ออฟไลน์ไม่สำเร็จ กรุณาลองใหม่','err');return;}
   if(!await mciPreloadCurrentAssets())return;
   const joinedState=await Promise.all([kvGet(KEYS.roster, {}),kvGet(KEYS.gc,DEFAULT_GC)]),currentRoster=joinedState[0],currentGc=normalizeGameControl(joinedState[1]);STATE.gc=currentGc;
   if(currentRoster[name] && currentRoster[name].station==='GM' && !asGM){
@@ -6317,21 +6376,27 @@ async function joinAsPlayer(name, gender, asGM, asCommander, gmPassword, selecte
   STATE.me.gender = gender;
   STATE.me.gmAuthorized = !!asGM;
   if(asGM){STATE.gmTab=currentGc.status==='NOT_STARTED'?'settings':'control';STATE._gmTabInitialized=true;}else STATE._gmTabInitialized=false;
-  if(!STATE.me.clientId)STATE.me.clientId=makeClientId();
+  if(!asGM||!STATE.me.clientId)STATE.me.clientId=makeClientId();
   identitySession += 1;
+  const joinSession=identitySession,joinClientId=STATE.me.clientId;
+  if(!asGM){try{await mciArmOfflineSession(name,joinClientId);}catch(e){mciExpireLocalPlayer();return;}}
+  if(joinSession!==identitySession)return;
   let joinedStation=null;
   const joinedRoster=await kvRosterUpdate(function(roster){
+    if(joinSession!==identitySession||STATE.me.clientId!==joinClientId)return null;
     const cur = roster[name];
     if(cur&&cur.clientId&&cur.clientId!==STATE.me.clientId&&sharedNowMs()-Number(cur.lastSeen||0)<45000){return null;}
     const next = Object.assign({}, roster);
-    joinedStation=asGM ? 'GM' : (cur&&cur.deploymentStatus&&cur.station ? cur.station : 'HOSPITAL_BASE');
-    const deployment=asGM?'GM':(cur&&cur.deploymentStatus?cur.deploymentStatus:(joinedStation==='COMMANDER'?'SCENE_COMMAND':'HOSPITAL'));
+    joinedStation=asGM ? 'GM' : 'HOSPITAL_BASE';
+    const deployment=asGM?'GM':'HOSPITAL';
     const homeHospital=asGM?normalizeStartHospital(cur&&cur.homeHospital,'Hospital A'):normalizeStartHospital(selectedHospital,normalizeStartHospital(cur&&cur.homeHospital,'Hospital A'));
-    next[name] = Object.assign({},cur||{},{station:joinedStation,gender:gender,lastSeen:Date.now(),clientId:STATE.me.clientId,homeHospital:homeHospital,deploymentStatus:deployment,assignedVehicle:(cur&&cur.assignedVehicle)||null,vehicleReady:!!(cur&&cur.vehicleReady)});
+    next[name] = Object.assign({},asGM?(cur||{}):{},{station:joinedStation,gender:gender,lastSeen:Date.now(),clientId:joinClientId,homeHospital:homeHospital,deploymentStatus:deployment,assignedVehicle:null,vehicleReady:false});
     return next;
   });
+  if(joinSession!==identitySession)return;
   if(!joinedRoster[name]||joinedRoster[name].clientId!==STATE.me.clientId){STATE.me.name='';STATE.me.station=null;toast('ชื่อนี้กำลังใช้งาน หรือบันทึกการเข้าร่วมไม่สำเร็จ กรุณาลองชื่ออื่น','err');render(true);return;}
   await kvRootTransaction(function(root){const gc=root[KEYS.gc]||STATE.gc;if(gc.status==='RUNNING')root[KEYS.gc]=gcWithParticipantEvent(gc,name,joinedStation,elapsedMinutes(gc),'JOIN',name);return root;});
+  if(joinSession!==identitySession)return;
   saveLocalSession();
   armTwoDPositionDisconnect();
   startPolling();
@@ -11865,7 +11930,7 @@ function mciVehicleAudioSnapshot(){
 if(window.MCIAudio)MCIAudio.setProviders(mciLocalAudioSnapshot,mciVehicleAudioSnapshot);
 document.addEventListener('click',function(e){if(!window.MCIAudio)return;const btn=e.target.closest('[data-act]');if(btn&&['clinicalCheck','txStart','supplyTake','supplyReturn'].includes(btn.dataset.act))MCIAudio.cue('treatment');},true);
 
-document.documentElement.dataset.mciVersion='6.20.0';
+document.documentElement.dataset.mciVersion='6.21.0';
 boot();
 })();
 
