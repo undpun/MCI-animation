@@ -1653,7 +1653,7 @@ button,.btn,.tab,.switchbtn,select,input[type=checkbox],input[type=radio]{touch-
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-<script src="mci-client.js?v=6.9-language-1"></script>
+<script src="mci-client.js?v=6.20"></script>
 <script src="mci-walk.js"></script>
 <script src="mci-audio.js?v=6.19"></script>
 <script src="mci-i18n.js?v=6.9.3-language-4"></script>
@@ -2917,6 +2917,8 @@ const KEYS = {
 };
 /* v6.6: retain the existing database and game rules; all changes are additive. */
 const mciConfirmedValues={};let mciFoundationPromise=null;
+const mciConfirmedAt={};
+function mciRecordTime(label,start){if(window.MCIPerf)MCIPerf.record(label,performance.now()-start);}
 function mciDecode(raw){return typeof raw==='string'?JSON.parse(raw):raw;}
 function mciMergeChanges(base,wanted,live){
   if(JSON.stringify(base)===JSON.stringify(wanted))return live;
@@ -2964,17 +2966,21 @@ function mciRepairInitialSupply(root){
   root[KEYS.gc]=gc;root[KEYS.zoneResources]=zones;root[KEYS.fieldZones]=field;
 }
 let mciPresenceFrame=0,mciHeartbeatBinding=null,mciLeaderTimer=null,mciLeaseBusy=false,mciLeaseUntil=0,mciLeaderRef=null;
-function mciPeerRefresh(){
+let mciPresenceFull=false,mciPresenceChanged=new Set();
+function mciPeerRefresh(clientId){
+  if(clientId)mciPresenceChanged.add(clientId);else mciPresenceFull=true;
   if(mciPresenceFrame)return;mciPresenceFrame=requestAnimationFrame(function(){mciPresenceFrame=0;
     const scene=currentStartWorldScene();if(scene)updateStartWorldPlayers();
-    twoDFramePost('presence',{positions:STATE.positions||{},serverNowMs:sharedNowMs()});
+    if(mciPresenceFull)twoDFramePost('presence',{positions:STATE.positions||{},serverNowMs:sharedNowMs()});
+    else{const changed={},removed=[];mciPresenceChanged.forEach(function(id){if(STATE.positions[id])changed[id]=STATE.positions[id];else removed.push(id);});twoDFramePost('presenceDelta',{positions:changed,removed:removed});}
+    mciPresenceFull=false;mciPresenceChanged.clear();
   });
 }
 function mciStartPresenceListener(session){
   const ref=fbDb.ref(PRESENCE_ROOT+'/'+KEYS.positions);
   ['child_added','child_changed','child_removed'].forEach(function(event){const handler=function(snap){
     if(session!==identitySession)return;
-    if(event==='child_removed')delete STATE.positions[snap.key];else STATE.positions[snap.key]=snap.val();mciPeerRefresh();
+    if(event==='child_removed')delete STATE.positions[snap.key];else STATE.positions[snap.key]=snap.val();mciPeerRefresh(snap.key);
   };ref.on(event,handler,function(e){setFirebaseConnection(false,e);});realtimeBindings.push({ref:ref,event:event,handler:handler});});
   const heartbeatRef=fbDb.ref(PRESENCE_ROOT+'/heartbeats');
   const heartbeatHandler=function(snap){const hb=snap.val();if(!hb||!hb.name)return;const r=STATE.roster[hb.name];if(r&&r.clientId===snap.key)r.lastSeen=Number(hb.at)||r.lastSeen;};
@@ -3002,7 +3008,7 @@ function mciReleaseLeader(){
   if(mciLeaderTimer)clearInterval(mciLeaderTimer);mciLeaderTimer=null;mciLeaseUntil=0;
   const owner=STATE.me.clientId;if(mciLeaderRef&&owner)mciLeaderRef.transaction(function(cur){if(cur&&cur.owner===owner)return null;return;},undefined,false).catch(function(){});
 }
-function mciStopPresence(){if(mciPresenceFrame)cancelAnimationFrame(mciPresenceFrame);mciPresenceFrame=0;}
+function mciStopPresence(){if(mciPresenceFrame)cancelAnimationFrame(mciPresenceFrame);mciPresenceFrame=0;mciPresenceFull=false;mciPresenceChanged.clear();}
 async function mciPreloadCurrentAssets(){return window.MCIAssets?window.MCIAssets.prepare():true;}
 
 let fbReady = false;
@@ -3165,16 +3171,23 @@ async function archiveDataDelete(id){
     return false;
   }
 }
-async function kvUpdate(key,fallback,mutator){
+async function kvUpdate(key,fallback,mutator,forceRefresh){
   if(!fbReady)throw new Error('Firebase ยังไม่พร้อม');
+  const started=performance.now();
+  try{
   const ref=fbDb.ref(DB_ROOT+'/'+key);
-  const initial=await ref.once('value');
+  const seeded=!forceRefresh&&Object.prototype.hasOwnProperty.call(mciConfirmedValues,key)&&Date.now()-Number(mciConfirmedAt[key]||0)<15000;
+  const initial=seeded?cloneDatabaseValue(mciConfirmedValues[key]):(await ref.once('value')).val();
+  let usedFallback=false;
   const result=await ref.transaction(function(raw){
-    const cur=mciDecode(raw==null?initial.val():raw);const next=mutator(cur==null?cloneDatabaseValue(fallback):cur);
+    usedFallback=raw==null;
+    const cur=mciDecode(usedFallback?cloneDatabaseValue(initial):raw);const next=mutator(cur==null?cloneDatabaseValue(fallback):cur);
     if(next==null)return;return JSON.stringify(next);
   },undefined,false);
+  if(!result.committed&&seeded&&usedFallback)return await kvUpdate(key,fallback,mutator,true);
   if(!result.committed)throw new Error('บันทึกไม่สำเร็จ');
-  const saved=mciDecode(result.snapshot.val());mciConfirmedValues[key]=cloneDatabaseValue(saved);return saved;
+  const saved=mciDecode(result.snapshot.val());mciConfirmedValues[key]=cloneDatabaseValue(saved);mciConfirmedAt[key]=Date.now();return saved;
+  }finally{mciRecordTime('command.'+key,started);}
 }
 async function kvRosterUpdate(mutator){
   if(!fbReady) return mutator({});
@@ -3203,6 +3216,7 @@ async function kvRosterUpdate(mutator){
 let mciRootSeed=null,mciRootSeedAt=0;
 async function kvRootTransaction(mutator,forceRefresh){
   if(!fbReady) return {committed:false};
+  const started=performance.now();
   try{
     const ref = fbDb.ref(DB_ROOT);
     // A confirmed seed avoids a second whole-game read before each command.
@@ -3242,6 +3256,7 @@ async function kvRootTransaction(mutator,forceRefresh){
       });
       return encoded;
     },undefined,false);
+    mciRecordTime('command.root',started);
     STATE.fbConnected=true;
     const savedRoot={};
     const savedRaw=result.snapshot.val()||{};
@@ -5947,6 +5962,7 @@ function startRealtimeListeners(session){
       if(raw==null&&STATE.ready){console.warn('Missing live child',dbKey);return;}
       try{STATE[stateKey]=decodeRealtimeValue(raw,REALTIME_DEFAULTS[dbKey]);}catch(e){setFirebaseConnection(false,e);return;}
       mciConfirmedValues[dbKey]=cloneDatabaseValue(STATE[stateKey]);
+      mciConfirmedAt[dbKey]=Date.now();
       if(stateKey==='gc')STATE.gc=normalizeGameControl(STATE.gc);
       if(stateKey==='cases')STATE.cases=normalizeCases(STATE.cases);
       if(stateKey==='zoneResources')STATE.zoneResources=normalizeZoneResources(STATE.zoneResources,STATE.resources);
@@ -8231,6 +8247,9 @@ function renderSnapshotForCurrentView(){
   return JSON.stringify(Object.assign(base,scoped));
 }
 function render(force){
+  const started=performance.now();try{return mciRenderNow(force);}finally{mciRecordTime('render',started);}
+}
+function mciRenderNow(force){
   updateClockPauseOverlay();
   const onSceneTab = STATE.ready && STATE.me.station==='GM' && STATE.gmTab==='scene';
   if(onSceneTab && sceneMounted){ updateTwoDPlayerHost(); updateSceneViewerPanel(); renderCommunicationUI(); refreshHowToAfterRender(); return; }
@@ -8353,7 +8372,8 @@ function patchTwoDFrameSource(source){
   // Treatment countdowns have their own animation loop; they must not rebuild the full scene every sync.
   source=source.replace("const sig=JSON.stringify([q.patients||[],q.vehicles||[],q.hospitals||[],q.vehicleRequests||[]]);",
     "const patientSig=(q.patients||[]).map(({txActiveRemainSec,txActiveStartMs,txActiveEndMs,...p})=>p);const sig=JSON.stringify([patientSig,q.vehicles||[],q.hospitals||[],q.vehicleRequests||[]]);");
-  source=source.replace('<script src="mci-client.js">','<script src="mci-client.js?v=6.9-language-1">');
+  source=source.replace('<script src="mci-client.js">','<script src="mci-client.js?v=6.20">');
+  source=source.replace("if(m.type==='presence'){", "if(m.type==='presenceDelta'){const p=m.payload||{};snap.positions=Object.assign({},snap.positions||{},p.positions||{});(p.removed||[]).forEach(k=>delete snap.positions[k]);peers();return;}if(m.type==='presence'){");
   source=source.replace('</head>','<script src="mci-i18n.js?v=6.9.3-language-4"></'+'script><script src="mci-runtime-en.js?v=6.9.3-language-4"></'+'script></head>');
   const morgueCss=`
 .mciMorgue{position:absolute;z-index:58;left:18px;bottom:20px;width:330px;max-height:118px;padding:8px;border:3px solid #ef5350;border-radius:12px;background:#090d12ee;box-shadow:0 0 22px #ef535077,0 9px 25px #000b;pointer-events:none}
@@ -11845,7 +11865,7 @@ function mciVehicleAudioSnapshot(){
 if(window.MCIAudio)MCIAudio.setProviders(mciLocalAudioSnapshot,mciVehicleAudioSnapshot);
 document.addEventListener('click',function(e){if(!window.MCIAudio)return;const btn=e.target.closest('[data-act]');if(btn&&['clinicalCheck','txStart','supplyTake','supplyReturn'].includes(btn.dataset.act))MCIAudio.cue('treatment');},true);
 
-document.documentElement.dataset.mciVersion='6.19.0';
+document.documentElement.dataset.mciVersion='6.20.0';
 boot();
 })();
 

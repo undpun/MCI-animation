@@ -1,6 +1,9 @@
 /* Small DOM reconciler. Reuses controls and scene nodes instead of replacing #app. */
 (function(){
 'use strict';
+// Bounded, local-only timing samples. No patient data or telemetry is collected.
+const timing=new Map();
+window.MCIPerf={record:function(name,ms){if(!Number.isFinite(ms))return;let s=timing.get(name);if(!s){s={values:[],count:0};timing.set(name,s);}s.values[s.count++%256]=ms;},report:function(){const out={};for(const [name,s] of timing){const a=s.values.slice().sort((a,b)=>a-b);out[name]={count:s.count,samples:a.length,medianMs:a[Math.floor((a.length-1)*.5)],p95Ms:a[Math.floor((a.length-1)*.95)],maxMs:a[a.length-1]};}return out;},reset:function(){timing.clear();}};
 const lastAttrs=new WeakMap(),dirtyInputs=new WeakSet();
 document.addEventListener('input',function(e){if(/^(INPUT|TEXTAREA)$/.test(e.target.tagName||'')&&!e.target.hasAttribute('data-case-field')&&!e.target.hasAttribute('data-act'))dirtyInputs.add(e.target);},true);
 function key(n){
@@ -49,11 +52,11 @@ const tracks=new Map();let animation=0;
 const REMOTE_RENDER_DELAY=180;
 function tick(now){
  let active=false;for(const [el,t] of tracks){if(!el.isConnected){tracks.delete(el);if(window.MCIWalk)MCIWalk.detach(el);continue;}
-  const renderAt=now-REMOTE_RENDER_DELAY;while(t.samples.length>2&&t.samples[1].time<renderAt)t.samples.shift();
+  const renderAt=now-REMOTE_RENDER_DELAY;while(t.samples.length>2&&t.samples[1].time<=renderAt)t.samples.shift();
   const a=t.samples[0],b=t.samples[1]||a,ratio=b.time>a.time?Math.max(0,Math.min(1,(renderAt-a.time)/(b.time-a.time))):1;
-  const x=a.x+(b.x-a.x)*ratio,y=a.y+(b.y-a.y)*ratio;el.style.left=x+t.unit;el.style.top=y+t.unit;
+  const x=a.x+(b.x-a.x)*ratio,y=a.y+(b.y-a.y)*ratio;if(x!==t.x||!t.painted)el.style.left=x+t.unit;if(y!==t.y||!t.painted)el.style.top=y+t.unit;t.painted=true;
   t.x=x;t.y=y;if(window.MCIWalk)MCIWalk.observe(el,x,y,t.unit,now);
-  if(renderAt<b.time)active=true;
+  if(renderAt<t.samples[t.samples.length-1].time)active=true;
  }
  animation=active?requestAnimationFrame(tick):0;
 }
@@ -62,8 +65,15 @@ window.MCIMotion={push:function(el,x,y,stamp,unit){
  let t=tracks.get(el);const time=performance.now(),changed=t&&(t.unit!==unit||t.parent!==el.parentNode);
  if(t&&!changed&&(t.stamp===stamp||Number(stamp)<Number(t.stamp)))return;
  if(!t||changed){t={unit:unit,parent:el.parentNode,stamp:stamp,x:x,y:y,received:time,samples:[{x:x,y:y,time:time-REMOTE_RENDER_DELAY}]};tracks.set(el,t);if(window.MCIWalk)MCIWalk.reset(el);}
- if(time-t.received>450){t.samples=[{x:t.x,y:t.y,time:time-REMOTE_RENDER_DELAY},{x:x,y:y,time:time+100}];}
- else{const last=t.samples[t.samples.length-1];t.samples.push({x:x,y:y,time:Math.max(time,last.time+1)});}
+ const delta=Number(stamp)-Number(t.stamp),last=t.samples[t.samples.length-1];
+ if(time-t.received>450||delta>1000){t.samples=[{x:t.x,y:t.y,time:time-REMOTE_RENDER_DELAY},{x:x,y:y,time:time+100}];}
+ else{
+  // Preserve the sender's sample spacing when packets arrive in a burst.
+  // Relative timestamps work even when the two devices' wall clocks differ.
+  let mapped=delta>0?last.time+delta:time;
+  if(mapped>time+250||mapped<time-450)mapped=time;
+  t.samples.push({x:x,y:y,time:Math.max(mapped,last.time+1)});
+ }
  t.received=time;t.stamp=stamp;if(t.samples.length>20)t.samples.shift();el.style.transition='none';
  if(!animation)animation=requestAnimationFrame(tick);
 },forget:function(el){tracks.delete(el);if(window.MCIWalk)MCIWalk.detach(el);if(!tracks.size&&animation){cancelAnimationFrame(animation);animation=0;}}};
@@ -92,3 +102,4 @@ window.MCIAssets={prepare:function(){
  })().finally(()=>{inflight=null;});return inflight;
 }};
 })();
+

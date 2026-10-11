@@ -29,7 +29,7 @@ function harness(){
 async function rootTest(){
  let reads=0,txs=0,root={data:'{}'},useNull=false;
  const ref={once:async()=>{reads++;return{val:()=>root};},transaction:async(cb)=>{txs++;const next=cb(useNull?null:root);if(next)root=next;return{committed:!!next,snapshot:{val:()=>root}};}};
- const ctx={fbReady:true,fbDb:{ref:()=>ref},DB_ROOT:'game',Date,STATE:{},KEYS:{},ARCHIVE_ROOT:'archives',mciStockSnapshot(){},mciReconcileStock(){},console};vm.createContext(ctx);
+ const ctx={fbReady:true,fbDb:{ref:()=>ref},DB_ROOT:'game',Date,performance,mciRecordTime(){},STATE:{},KEYS:{},ARCHIVE_ROOT:'archives',mciStockSnapshot(){},mciReconcileStock(){},console};vm.createContext(ctx);
  vm.runInContext(between('let mciRootSeed=null','async function kvPatientsTransaction'),ctx);
  await ctx.kvRootTransaction(r=>r);const before={reads,txs};for(let i=0;i<5;i++)await ctx.kvRootTransaction(()=>null);
  assert.equal(reads-before.reads,0);assert.equal(txs-before.txs,5);
