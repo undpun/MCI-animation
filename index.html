@@ -1655,7 +1655,7 @@ button,.btn,.tab,.switchbtn,select,input[type=checkbox],input[type=radio]{touch-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script src="mci-client.js?v=6.9-language-1"></script>
 <script src="mci-walk.js"></script>
-<script src="mci-audio.js?v=6.15"></script>
+<script src="mci-audio.js?v=6.19"></script>
 <script src="mci-i18n.js?v=6.9.3-language-4"></script>
 <script src="mci-runtime-en.js?v=6.9.3-language-4"></script>
 <script src="mci-physiology-en.js?v=6.9.1-language-2"></script>
@@ -3209,6 +3209,7 @@ async function kvRootTransaction(mutator,forceRefresh){
     // Firebase still compares/retries the transaction against server state.
     const usedSeed=!forceRefresh&&mciRootSeed&&Date.now()-mciRootSeedAt<15000;
     const initialRoot=usedSeed?mciRootSeed:(await ref.once('value')).val();
+    let usedFallback=false;
     const result = await ref.transaction(function(root){
       // The compat SDK can still invoke a transaction's first local pass with
       // null even immediately after once('value').  Falling back to {} here
@@ -3216,7 +3217,8 @@ async function kvRootTransaction(mutator,forceRefresh){
       // "ไม่พบผู้ป่วย".  Seed that first pass with the freshly-read snapshot;
       // if another client has changed the root, Firebase detects the conflict
       // and invokes this function again with the newest server value.
-      if(root==null) root = initialRoot;
+      usedFallback=root==null;
+      if(usedFallback) root = initialRoot;
       root = root || {};
       const decoded = {};
       Object.keys(root).forEach(function(k){
@@ -3245,7 +3247,7 @@ async function kvRootTransaction(mutator,forceRefresh){
     const savedRaw=result.snapshot.val()||{};
     mciRootSeed=savedRaw;mciRootSeedAt=Date.now();
     // A stale fallback can fail validation locally: read fresh and try once.
-    if(!result.committed&&usedSeed)return kvRootTransaction(mutator,true);
+    if(!result.committed&&usedSeed&&usedFallback)return kvRootTransaction(mutator,true);
     Object.keys(savedRaw).forEach(function(k){
       const v=savedRaw[k];
       try{savedRoot[k]=typeof v==='string'?JSON.parse(v):v;}catch(e){savedRoot[k]=v;}
@@ -11813,15 +11815,19 @@ function boot(){
 
 /* Audio uses a read-only view of existing game state. No sound state is sent to Firebase. */
 function mciLocalAudioSnapshot(){
+ if(!STATE.ready||STATE.gc.status!=='RUNNING'||STATE.gc.clockPaused)return {status:STATE.gc.status,paused:!!STATE.gc.clockPaused};
  const elapsed=elapsedMinutes(STATE.gc),station=STATE.me&&STATE.me.station||'',zone=station==='TX_RED'?'RED':station==='TX_YELLOW'?'YELLOW':station==='TX_GREEN'?'GREEN':'';
  let voiceCount=0,monitorCount=0;
  if(station==='PRIMARY'||station==='SECONDARY'||station==='LOADING'||zone){
   for(const p of STATE.patients||[]){
    const nearby=station==='PRIMARY'?p.stage==='PRIMARY':station==='SECONDARY'?p.stage==='SECONDARY':station==='LOADING'?p.stage==='TRANSFER':p.stage==='TX'&&String(p.txZone||'').toUpperCase()===zone;
-   if(!nearby||patientIsDead(p,elapsed))continue;
-   if(zone)monitorCount++;
-   const c=findCase(STATE.cases,p.id)||{},v=triagePhysiologySource(p,c,elapsed),gcs=Number(v.gcs||15);
-   if(gcs>=10&&gcs<=15&&v.breathing!==false)voiceCount++;
+   if(!nearby)continue;
+   const c=findCase(STATE.cases,p.id)||{},derived=dynamicPhysiologyAt(c,elapsed,patientPhysiologyTreatmentEvents(p));
+   if(physiologyModel(c)?derived.status==='DEAD':computeTxStatus(p,c,elapsed)==='DEAD')continue;
+   if(zone)monitorCount=Math.min(5,monitorCount+1);
+   const v=Object.assign({},c,derived.vitals||{},{terminalState:derived.status||null},p.vitals||{},p.currentVitals||{},p.physiology||{},p.currentPhysiology||{}),gcs=Number(v.gcs||15);
+   if(gcs>=10&&gcs<=15&&v.breathing!==false)voiceCount=Math.min(5,voiceCount+1);
+   if(voiceCount===5&&(!zone||monitorCount===5))break;
   }
  }
  const messages=[];
@@ -11830,14 +11836,16 @@ function mciLocalAudioSnapshot(){
    zones.forEach(function(z){communicationMessagesForZone(z).slice(-3).forEach(function(m){messages.push({id:m.id,at:Number(m.at||0),urgent:m.kind==='urgent',incoming:communicationIncomingForMe(m,z)});});});
  }
  return {status:STATE.gc.status,paused:!!STATE.gc.clockPaused,station:station,voiceCount:voiceCount,monitorCount:monitorCount,
-  sirenSources:activeFieldTents('PARKING').concat(activeFieldTents('LOADING')).map(function(t){const q=fieldTentDoorPoint(t);return{x:q.x,y:q.y};}),
-  vehiclesMoving:(station==='PARKING'||station==='LOADING')&&(STATE.vehicles||[]).some(function(v){const state=vehicleDeploymentState(v,elapsed);return state==='TO_PARKING'||state==='TO_LOADING';}),
   messages:messages,position:twoDLastPosition&&{scene:twoDLastPosition.scene,x:twoDLastPosition.x,y:twoDLastPosition.y}};
 }
-setInterval(function(){if(window.MCIAudio&&STATE.ready)MCIAudio.update(mciLocalAudioSnapshot());},2200);
+function mciVehicleAudioSnapshot(){
+ return {status:STATE.ready?STATE.gc.status:'WAITING',paused:!!STATE.gc.clockPaused,now:sharedNowMs(),station:STATE.me&&STATE.me.station||'',vehicles:STATE.vehicles||[],position:twoDLastPosition,
+  sirenSources:activeFieldTents('PARKING').concat(activeFieldTents('LOADING')).map(function(t){const q=fieldTentDoorPoint(t);return{x:q.x,y:q.y,zone:t.type};})};
+}
+if(window.MCIAudio)MCIAudio.setProviders(mciLocalAudioSnapshot,mciVehicleAudioSnapshot);
 document.addEventListener('click',function(e){if(!window.MCIAudio)return;const btn=e.target.closest('[data-act]');if(btn&&['clinicalCheck','txStart','supplyTake','supplyReturn'].includes(btn.dataset.act))MCIAudio.cue('treatment');},true);
 
-document.documentElement.dataset.mciVersion='6.6.0';
+document.documentElement.dataset.mciVersion='6.19.0';
 boot();
 })();
 
