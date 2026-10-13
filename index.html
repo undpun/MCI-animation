@@ -2753,7 +2753,7 @@ function normalizeGameControl(raw){
   const rawMode=raw&&raw.gameMode;gc.gameMode=START_GAME_MODES.some(function(m){return m.id===normU(rawMode);})?normU(rawMode):legacyMode;
   const mode=START_GAME_MODES.find(function(m){return m.id===gc.gameMode;})||START_GAME_MODES[1];
   gc.transportMode=mode.transportMode;
-  gc.hospitalStartScene=gc.hospitalStartScene!==false;
+  gc.hospitalStartScene=gc.gameMode!=='EXTERN'&&gc.hospitalStartScene!==false;
   gc.allowPlayerTentMove=gc.allowPlayerTentMove!==false;
   gc.supplyWithVehicle=gc.supplyWithVehicle!==false;
   gc.patientTargetCount=Math.max(1,Math.min(40,Math.floor(Number(gc.patientTargetCount)||10)));
@@ -2767,7 +2767,7 @@ function normalizeGameControl(raw){
   return gc;
 }
 function selectedGameMode(gc){return normalizeGameControl(gc||STATE.gc).gameMode;}
-function hospitalStartEnabled(gc){return normalizeGameControl(gc||STATE.gc).hospitalStartScene;}
+function hospitalStartEnabled(gc){const value=normalizeGameControl(gc||STATE.gc);return value.gameMode!=='EXTERN'&&value.hospitalStartScene;}
 function requireHospitalVehicleStart(){if(hospitalStartEnabled(STATE.gc))return true;toast('รอบนี้ปิด Hospital Start Scene · ผู้เล่นใช้ Supply และรอ Commander ส่งตรงเข้า Zone โดยไม่มีรถ','err');return false;}
 function supplyWithVehicleEnabled(gc){return normalizeGameControl(gc||STATE.gc).supplyWithVehicle;}
 function preGameSettingsLocked(gc){const value=gc||STATE.gc||DEFAULT_GC;return value.status!=='NOT_STARTED'||!!value.firstVehicleId;}
@@ -6494,6 +6494,10 @@ async function gmAssignStation(name, stationId, preserveOperationalRole){
     const operationalRole=stationId==='LOGISTICS'?'LOGISTICS':(preserveOperationalRole?(cur.operationalRole||(oldStation==='LOGISTICS'?'LOGISTICS':null)):null);
     if(stationId==='COMMANDER')Object.keys(next).forEach(function(n){if(n!==name&&next[n]&&next[n].station==='COMMANDER'){const old=next[n];next[n]=Object.assign({},old,{station:null,deploymentStatus:'SCENE',tentId:null,fieldReturnPos:null,commandClaimedAt:null});}});
     next[name]=Object.assign({},cur,{station:stationId||null,operationalRole:operationalRole,commandClaimedAt:stationId==='COMMANDER'?sharedNowMs():(oldStation==='COMMANDER'?null:cur.commandClaimedAt)});
+    if(STATE.me.station==='GM'&&selectedGameMode(root[KEYS.gc]||STATE.gc)==='EXTERN'&&stationId!=='GM'){
+      const tents=activeFieldTents(stationId,normalizeFieldZones(root[KEYS.fieldZones],root[KEYS.resources]||STATE.resources)),tent=tents[0];
+      next[name]=Object.assign({},next[name],{tentId:tent?tent.id:null,fieldReturnPos:tent?fieldReturnPositionForTent(tent):null,deploymentStatus:stationId==='HOSPITAL_BASE'?'HOSPITAL':'SCENE',stagingReady:false,assignedVehicle:null,sceneDepartureAtMs:null,sceneArrivalAtMs:null});
+    }
     root[KEYS.roster]=next;
     if(stationId==='COMMANDER'){const gc=normalizeGameControl(root[KEYS.gc]||STATE.gc);gc.operationsLog=(gc.operationsLog||[]).concat([{t:elapsed,type:'COMMAND_TRANSFER TO '+name,by:STATE.me.name||'GM'}]);root[KEYS.gc]=gc;}
     if(oldStation!==(stationId||null)){
@@ -6611,6 +6615,7 @@ function persistentZoneResourceBaseline(gc,currentZones,resources){
 }
 function startTeamNames(gc){const first=normalizedFirstTeam(gc).firstResponder,commander=activeCommanderName();return Array.from(new Set([first,commander].filter(Boolean)));}
 function startSetupReady(gc,roster){
+  if(selectedGameMode(gc)==='EXTERN')return !!startScenario(gc&&gc.scenarioId);
   const scenarioReady=!!startScenario(gc&&gc.scenarioId),commander=activeCommanderName(roster);
   if(!scenarioReady||!commander)return false;
   if(!hospitalStartEnabled(gc))return true;
@@ -6620,6 +6625,7 @@ function startSetupReady(gc,roster){
 function startDeploymentReady(gc,vehicles,roster){const id=gc&&gc.firstVehicleId,first=normalizedFirstTeam(gc).firstResponder;if(!id||!first)return false;const vehicle=(vehicles||[]).find(function(v){return v.name===id;}),rec=(roster||{})[first],location=rec&&rec.deploymentStatus;return !!(vehicle&&normU(vehicle.type)==='BLS'&&normalizedVehicleStart(vehicle).dispatchStatus==='SCENE'&&rec&&(location==='SCENE'||location==='SCENE_COMMAND'));}
 function startRosterOptions(selected,exclude){const blocked=Array.isArray(exclude)?exclude:[],names=Object.keys(STATE.roster||{}).filter(function(name){return STATE.roster[name]&&STATE.roster[name].station!=='GM'&&(name===selected||blocked.indexOf(name)<0);}).sort(function(a,b){return a.localeCompare(b,'th');});return '<option value="">— เลือกผู้เล่น —</option>'+names.map(function(name){return'<option value="'+esc(name)+'" '+(name===selected?'selected':'')+'>'+esc(name)+'</option>';}).join('');}
 function gmStartSetupPanel(){
+  if(selectedGameMode()==='EXTERN')return '<div class="card gm-start-setup"><h3>Extern · ไม่ต้องมี Command</h3><div class="hint">ผู้เล่นจัด Supply แล้วกดพร้อม → เดินทางไป Scene · '+(STATE.gc.allowPlayerTentMove!==false?'เดินเลือกเต็นท์เองได้':'ผู้เล่นแจ้ง GM เพื่อจัดหรือเปลี่ยนเต็นท์ผ่าน Roster & หน้าที่')+' · GM เป็นผู้เริ่มเวลาเกม</div></div>';
   const gc=STATE.gc||DEFAULT_GC,team=normalizedFirstTeam(gc),scenario=startScenario(gc.scenarioId),ready=startSetupReady(gc,STATE.roster),hospitalStart=hospitalStartEnabled(gc),deployed=!hospitalStart||startDeploymentReady(gc,STATE.vehicles,STATE.roster),commander=activeCommanderName(STATE.roster),locked=preGameSettingsLocked(gc)||!!gc.firstVehicleId;
   const responder=team.firstResponder,selector=hospitalStart?'<div class="first-team-grid"><div class="first-team-slot"><label class="label">First Responder คนแรก</label><select data-act="gmFirstResponderDeploy" '+(locked?'disabled':'')+'>'+startRosterOptions(responder)+'</select><div class="hint">เมื่อเลือก ระบบจะส่งผู้เล่นคนนี้เข้า Scene พร้อม BLS 1 คันทันที</div></div><div class="first-team-slot"><label class="label">รถ First Response</label><div class="startgame-pill">'+esc(gc.firstVehicleId||'รอเลือกผู้เล่น')+'</div></div><div class="first-team-slot"><label class="label">Command ที่ Scene</label><div class="startgame-pill">'+esc(commander||'รอผู้เล่นกด “ฉันคือ Command” ที่ Scene')+'</div></div></div>':'<div class="first-team-grid"><div class="first-team-slot" style="grid-column:span 3"><label class="label">รูปแบบเริ่มเกม</label><div class="startgame-pill">ไม่มีรถสำหรับ Player · ผู้เล่นเตรียม Supply กดพร้อม และหนึ่งคนกด “ฉันคือ Command” ที่ Hospital</div></div></div>';
   return '<div class="card gm-start-setup"><div class="flexrow" style="justify-content:space-between;align-items:flex-start"><div><div class="eyebrow">START GAME SETUP</div><h3 style="margin:4px 0">First Response</h3><div class="hint">'+(hospitalStart?'GM ส่ง First Responder 1 คนพร้อม BLS · ผู้เล่นตั้งตนเป็น Command เมื่อถึง Scene':'GM ไม่แต่งตั้ง Command · ผู้เล่นเลือก Command เองที่ Hospital')+'</div></div><span class="badge '+(deployed&&ready?'ok':'wait')+'">'+(deployed&&ready?'พร้อมเริ่มเกม':deployed?'รอผู้เล่นตั้ง Command':'รอส่ง First Responder')+'</span></div>'+selector+'<div class="hint" style="margin-top:10px">'+(scenario?'Scene: '+esc(scenario.label)+' · เลือกจากกล่องโหมดด้านบน':'กรุณาเลือก Scene ในกล่องโหมดด้านบน')+'</div></div>';
@@ -7615,8 +7621,35 @@ async function hospitalTakeCarriedItem(item){
   if(!result.committed){toast(fail||'หยิบของไม่สำเร็จ','err');return false;}STATE.carried=result.root[KEYS.carried];if(currentStartWorldScene()==='hospital_base')STATE.ui.hospitalBagOpen=true;render(true);return true;
 }
 let hospitalReadyPending=false;
+const PLAYER_SCENE_JOURNEY_MS=5000;
+let sceneJourneyTimer=null;
+function playerSceneJourneyActive(){const r=startPlayerRecord();return r.deploymentStatus==='SCENE'&&Number(r.sceneArrivalAtMs)>sharedNowMs();}
+function scheduleSceneJourneyEnd(){if(sceneJourneyTimer)clearTimeout(sceneJourneyTimer);const r=startPlayerRecord(),session=identitySession;sceneJourneyTimer=setTimeout(function(){sceneJourneyTimer=null;if(session===identitySession){twoDLastPosition=null;twoDLastNavigateScene='';saveLocalSession();render(true);}},Math.max(1,Number(r.sceneArrivalAtMs)-sharedNowMs()+30));}
+async function externDepartHospital(){
+  const player=STATE.me.name,id=STATE.me.clientId,session=identitySession;
+  if(!player||hospitalReadyPending)return false;
+  hospitalReadyPending=true;render(true);let fail='';
+  try{
+    const result=await kvRootTransaction(function(root){
+      const gc=normalizeGameControl(root[KEYS.gc]||STATE.gc),roster=Object.assign({},root[KEYS.roster]||{}),rec=roster[player];
+      if(session!==identitySession||selectedGameMode(gc)!=='EXTERN'||gc.status==='ENDED'||!rec||rec.clientId!==id||(rec.deploymentStatus||'HOSPITAL')!=='HOSPITAL')return null;
+      if(!startScenario(gc.scenarioId)||!sceneReadyFor(gc,root[KEYS.scene]||STATE.scene)){fail='รอ GM เลือกและเผยแพร่ Scene ก่อน';return null;}
+      const now=sharedNowMs();
+      roster[player]=Object.assign({},rec,{station:null,deploymentStatus:'SCENE',tentId:null,fieldReturnPos:null,stagingReady:false,vehicleReady:false,assignedVehicle:null,sceneDepartureAtMs:now,sceneArrivalAtMs:now+PLAYER_SCENE_JOURNEY_MS});
+      root[KEYS.roster]=roster;
+      root[KEYS.fieldZones]=provisionDirectStartFieldZones(root[KEYS.fieldZones],root[KEYS.resources]||STATE.resources);
+      gc.operationsLog=(gc.operationsLog||[]).concat([{t:elapsedMinutes(gc),type:'EXTERN_DEPART '+player,by:player}]);root[KEYS.gc]=gc;return root;
+    });
+    if(!result.committed){toast(fail||'ออกเดินทางไม่สำเร็จ กรุณาลองใหม่','err');return false;}
+    STATE.roster=result.root[KEYS.roster];STATE.gc=result.root[KEYS.gc];STATE.fieldZones=normalizeFieldZones(result.root[KEYS.fieldZones],STATE.resources);
+    STATE.ui.twoD=Object.assign({},STATE.ui.twoD,{activeZone:null,activeTentId:null,entryFieldPos:null,returnFieldPos:null,panelOpen:false,detailPatientId:null});
+    STATE.ui.startPanel=null;STATE.ui.hospitalBagOpen=false;twoDLastPosition=null;applyRosterIdentity();saveLocalSession();return true;
+  }catch(e){toast('ออกเดินทางไม่สำเร็จ กรุณาลองใหม่','err');return false;}
+  finally{hospitalReadyPending=false;render(true);}
+}
 async function toggleHospitalStagingReady(){
   if(hospitalReadyPending)return false;
+  if(selectedGameMode()==='EXTERN')return externDepartHospital();
   if(hospitalStartEnabled(STATE.gc)){toast('โหมดนี้ให้กดพร้อมจากภายในรถ','err');return false;}
   const player=STATE.me.name;if(!player)return false;
   const ready=!(STATE.roster[player]||{}).stagingReady;
@@ -7639,7 +7672,7 @@ async function toggleHospitalStagingReady(){
 async function commanderAssignReadyPlayer(player,tentId){
   if(STATE.me.station!=='COMMANDER'||hospitalStartEnabled(STATE.gc))return false;
   const tent=fieldTentById(tentId);if(!tent||tent.status!=='ACTIVE'){toast('เลือกเต็นท์ที่ ACTIVE','err');return false;}const returnPos=fieldReturnPositionForTent(tent);let fail='';
-  const result=await kvRootTransaction(function(root){const roster=Object.assign({},root[KEYS.roster]||{}),rec=roster[player];if(!rec||!rec.stagingReady){fail='Player ยังไม่ได้กดพร้อม';return null;}const gc=normalizeGameControl(root[KEYS.gc]||STATE.gc);if(gc.status!=='RUNNING'){fail='GM ต้องกดเริ่มเกมก่อนส่ง Player เข้า Zone';return null;}roster[player]=Object.assign({},rec,{station:tent.logicalZone,deploymentStatus:'SCENE',tentId:tent.id,fieldReturnPos:returnPos,stagingReady:false,vehicleReady:false,assignedVehicle:null,assignedByCommander:STATE.me.name||'COMMANDER',assignedAtMs:sharedNowMs()});root[KEYS.roster]=roster;gc.operationsLog=(gc.operationsLog||[]).concat([{t:elapsedMinutes(gc),type:'COMMAND_DIRECT_ASSIGN '+player+' TO '+tent.logicalZone,by:STATE.me.name||'COMMANDER'}]);root[KEYS.gc]=gc;return root;});
+  const result=await kvRootTransaction(function(root){const roster=Object.assign({},root[KEYS.roster]||{}),rec=roster[player];if(!rec||!rec.stagingReady){fail='Player ยังไม่ได้กดพร้อม';return null;}const gc=normalizeGameControl(root[KEYS.gc]||STATE.gc);if(gc.status!=='RUNNING'){fail='GM ต้องกดเริ่มเกมก่อนส่ง Player เข้า Zone';return null;}roster[player]=Object.assign({},rec,{station:tent.logicalZone,deploymentStatus:'SCENE',tentId:tent.id,fieldReturnPos:returnPos,stagingReady:false,vehicleReady:false,assignedVehicle:null,assignedByCommander:STATE.me.name||'COMMANDER',assignedAtMs:sharedNowMs(),sceneDepartureAtMs:sharedNowMs(),sceneArrivalAtMs:sharedNowMs()+PLAYER_SCENE_JOURNEY_MS});root[KEYS.roster]=roster;gc.operationsLog=(gc.operationsLog||[]).concat([{t:elapsedMinutes(gc),type:'COMMAND_DIRECT_ASSIGN '+player+' TO '+tent.logicalZone,by:STATE.me.name||'COMMANDER'}]);root[KEYS.gc]=gc;return root;});
   if(!result.committed){toast(fail||'ส่ง Player เข้า Zone ไม่สำเร็จ','err');return false;}STATE.roster=result.root[KEYS.roster];STATE.gc=result.root[KEYS.gc];render(true);toast('ส่ง '+player+' ไป '+tentDisplayName(tent)+' แล้ว','ok');return true;
 }
 async function callStartVehicle(vehicleName){
@@ -8625,7 +8658,7 @@ function updatePlayerHowToDock(){
 }
 function updateTwoDPlayerHost(){
   const host=document.getElementById('twoDPlayerHost'),f=document.getElementById('twoDPlayerFrame');if(!host||!f)return;
-  const playerStation=STATE.me.station!=='GM'&&STATE.me.station!=='COMMANDER',ended=STATE.gc&&STATE.gc.status==='ENDED',active=(STATE.ui.twoD&&STATE.ui.twoD.activeZone)||twoDZoneForStation(STATE.me.station),targetScene=active&&TWO_D_ZONES[active]?TWO_D_ZONES[active].scene:null,atScene=startPlayerLocation()==='SCENE',startWorld=currentStartWorldScene(),show=!!(STATE.ready&&STATE.me.name&&playerStation&&!ended&&atScene&&active&&targetScene&&targetScene!=='overview');
+  const playerStation=STATE.me.station!=='GM'&&STATE.me.station!=='COMMANDER',ended=STATE.gc&&STATE.gc.status==='ENDED',active=(STATE.ui.twoD&&STATE.ui.twoD.activeZone)||twoDZoneForStation(STATE.me.station),targetScene=active&&TWO_D_ZONES[active]?TWO_D_ZONES[active].scene:null,atScene=startPlayerLocation()==='SCENE'&&!playerSceneJourneyActive(),startWorld=currentStartWorldScene(),show=!!(STATE.ready&&STATE.me.name&&playerStation&&!ended&&atScene&&active&&targetScene&&targetScene!=='overview');
   host.classList.toggle('hidden',!show);document.body.classList.toggle('twoD-player-mode',show);updateVehicleCapacityHud(show);updatePlayerHowToDock();
   if(!show){
     twoDLastSync='';twoDLastNavigateScene='';f.style.opacity='0';if(!startWorld){twoDPendingPosition=null;twoDLastPosition=null;if(twoDPositionTimer){clearTimeout(twoDPositionTimer);twoDPositionTimer=null;}if(!twoDNonPlayerPresenceCleared&&fbReady&&STATE.me.clientId){twoDNonPlayerPresenceCleared=true;fbDb.ref(PRESENCE_ROOT+'/'+KEYS.positions+'/'+STATE.me.clientId).remove().catch(()=>{});}}else{twoDNonPlayerPresenceCleared=false;updateStartWorldPlayers();}
@@ -8643,6 +8676,7 @@ function writeTwoDPosition(){twoDPositionTimer=null;const p=twoDPendingPosition;
 function queueTwoDPosition(p,now){if(STATE.gc.status==='ENDED'){twoDPendingPosition=null;return;}twoDPendingPosition=p;if(now){if(twoDPositionTimer)clearTimeout(twoDPositionTimer);writeTwoDPosition();return}if(!twoDPositionTimer)twoDPositionTimer=setTimeout(writeTwoDPosition,80)}function touchTwoDPosition(){if(STATE.gc.status!=='ENDED'&&twoDLastPosition)queueTwoDPosition(twoDLastPosition,true)}
 const START_WORLD_WIDTH=1600,START_WORLD_HEIGHT=900;
 function currentStartWorldScene(){
+  if(playerSceneJourneyActive())return null;
   if(!STATE.ready||!STATE.me.name||STATE.gc.status==='ENDED'||STATE.me.station==='GM'||STATE.me.station==='COMMANDER')return null;
   const location=startPlayerLocation(),active=(STATE.ui.twoD&&STATE.ui.twoD.activeZone)||twoDZoneForStation(STATE.me.station);
   if(location==='HOSPITAL')return'hospital_base';
@@ -8968,8 +9002,8 @@ function playerFieldReturnPosition(rosterRec){
   if(tentId){if(validFieldReturnPosition(ui.entryFieldPos,tentId))return ui.entryFieldPos;if(validFieldReturnPosition(rec.fieldReturnPos,tentId))return rec.fieldReturnPos;if(validFieldReturnPosition(ui.returnFieldPos,tentId))return ui.returnFieldPos;const tent=fieldTentById(tentId);if(tent)return fieldReturnPositionForTent(tent);}
   if(validFieldReturnPosition(ui.entryFieldPos))return ui.entryFieldPos;if(validFieldReturnPosition(rec.fieldReturnPos))return rec.fieldReturnPos;if(validFieldReturnPosition(ui.returnFieldPos))return ui.returnFieldPos;return null;
 }
-function playerTentMoveAllowed(){return STATE.gc.allowPlayerTentMove!==false||STATE.me.station==='GM'||STATE.me.station==='COMMANDER';}
-function blockPlayerTentMove(){toast('โหมดนี้ไม่อนุญาตให้ย้ายเต็นท์เอง · ส่งคำขอผ่าน Chat และรอ Command อนุมัติ','err');return false;}
+function playerTentMoveAllowed(){return !playerSceneJourneyActive()&&(STATE.gc.allowPlayerTentMove!==false||STATE.me.station==='GM'||STATE.me.station==='COMMANDER');}
+function blockPlayerTentMove(){toast('โหมดนี้ไม่อนุญาตให้ย้ายเต็นท์เอง · แจ้ง '+(selectedGameMode()==='EXTERN'?'GM':'Command')+' เพื่อจัดหรือเปลี่ยนเต็นท์ให้','err');return false;}
 function restoreLockedPlayerZone(){const z=(STATE.ui.twoD&&STATE.ui.twoD.activeZone)||twoDZoneForStation(STATE.me.station),scene=z&&TWO_D_ZONES[z]&&TWO_D_ZONES[z].scene;if(!scene)return;twoDLastNavigateScene=scene;twoDFramePost('navigate',{scene:scene});}
 let zoneTransitionTimer=null;
 function showZoneTransition(label){
@@ -9013,14 +9047,14 @@ function viewHospitalBase(){
   const now=sharedNowMs(),noVehicleStart=!hospitalStartEnabled(STATE.gc),myRoster=(STATE.roster&&STATE.roster[STATE.me.name])||{};
   const parkingTops=[16.70,22.95,30.85,37.65,44.55,51.65,58.65,66.05];
   const all=(STATE.vehicles||[]),home=playerHomeHospital(),fleet=noVehicleStart?[]:all.map(function(v,i){return{v:v,globalIndex:i};}).filter(function(x){return !vehicleUsesExternalBase(x.v)&&vehicleHomeHospital(x.v,x.globalIndex)===home;}),roadCalled=fleet.map(function(x){return x.v;}).filter(function(v){const s=normalizedVehicleStart(v);return s.dispatchStatus==='CALLED'&&!!s.roadEnteredAtMs;}).sort(function(a,b){return Number(normalizedVehicleStart(a).roadEnteredAtMs||0)-Number(normalizedVehicleStart(b).roadEnteredAtMs||0);}),insideQueue=fleet.map(function(x){return x.v;}).filter(function(v){const s=normalizedVehicleStart(v);return s.dispatchStatus==='CALLED'&&!s.roadEnteredAtMs;}).sort(function(a,b){return Number(normalizedVehicleStart(a).calledAtMs||0)-Number(normalizedVehicleStart(b).calledAtMs||0);}),insideNames=new Set(insideQueue.map(function(v){return v.name;}));
-  const status=home+' · '+(noVehicleStart?(myRoster.stagingReady?'พร้อมแล้ว · รอ Command ส่งไป Zone':'จัด Supply ให้เสร็จแล้วกดพร้อมปฏิบัติงาน'):(STATE.gc.status==='NOT_STARTED'?'เดินจัดกระเป๋าและรอ Command เรียกรถเสริม':'เดินเลือก Supply หรือเรียกรถ · กดรถบนถนนเพื่อขึ้น'))+(insideQueue.length?' · รอคิวในโรงพยาบาล '+insideQueue.length+' คัน':'');
+  const status=home+' · '+(noVehicleStart?(selectedGameMode()==='EXTERN'?'จัด Supply แล้วกดพร้อมเพื่อเดินทางไป Scene':myRoster.stagingReady?'พร้อมแล้ว · รอ Command ส่งไป Zone':'จัด Supply ให้เสร็จแล้วกดพร้อมปฏิบัติงาน'):(STATE.gc.status==='NOT_STARTED'?'เดินจัดกระเป๋าและรอ Command เรียกรถเสริม':'เดินเลือก Supply หรือเรียกรถ · กดรถบนถนนเพื่อขึ้น'))+(insideQueue.length?' · รอคิวในโรงพยาบาล '+insideQueue.length+' คัน':'');
   const parking=fleet.slice(0,8).map(function(x,i){const v=x.v,start=normalizedVehicleStart(v),queued=insideNames.has(v.name),atBase=vehicleWorkflowState(v,elapsedMinutes(STATE.gc))==='RESERVE',returning=Number(v.hospitalReturnedAtMs||0)>0&&now-Number(v.hospitalReturnedAtMs)<HOSPITAL_CALL_DRIVE_MS;if((start.dispatchStatus!=='PARKED'&&!queued)||!atBase||returning)return'';const top=parkingTops[i].toFixed(2);return'<button type="button" class="hospital-hotspot vehicle '+(queued?'queue-wait':'')+'" style="top:'+top+'%" '+(queued?'disabled':'data-act="hospitalVehicleCall" data-vehicle="'+esc(v.name)+'"')+' title="'+(queued?'รอช่องบนถนนว่าง':'เรียก '+esc(v.name)+' มาจอดรอ')+'"><img src="'+esc(startVehicleAsset(v))+'" alt=""><span>'+esc(v.name)+'<br>'+(queued?'รอคิวถนน '+(insideQueue.findIndex(function(q){return q.name===v.name;})+1):'กดเรียกรถ')+'</span></button>';}).join('');
   const animations=roadCalled.filter(function(v){const s=normalizedVehicleStart(v);return s.roadEnteredAtMs&&now-s.roadEnteredAtMs<HOSPITAL_CALL_DRIVE_MS;}).map(function(v){const s=normalizedVehicleStart(v),parkingIndex=Math.max(0,fleet.findIndex(function(x){return x.v.name===v.name;})),roadIndex=Math.max(0,roadCalled.findIndex(function(x){return x.name===v.name;})),startY=parkingTops[Math.min(7,parkingIndex)]+3.05,endLeft=hospitalRoadQueueLeft(roadIndex);return'<img class="hospital-route-vehicle" data-route-kind="call" data-start-x="'+HOSPITAL_PARKED_CENTER_X+'" data-start-y="'+startY.toFixed(3)+'" data-end-x="'+endLeft+'" data-end-y="'+HOSPITAL_ROAD_CENTER_Y+'" data-start-ms="'+Number(s.roadEnteredAtMs)+'" data-duration-ms="'+HOSPITAL_CALL_DRIVE_MS+'" data-start-height="'+HOSPITAL_PARKED_ART_HEIGHT+'" data-end-height="'+HOSPITAL_ROAD_ART_HEIGHT+'" data-start-angle="90" data-end-angle="90" src="'+esc(startVehicleAsset(v))+'" alt="รถออกจากช่อง '+(parkingIndex+1)+' ไปจอดคิว '+(roadIndex+1)+'">';}).join('');
   const returnAnimations=fleet.slice(0,8).filter(function(x){return Number(x.v.hospitalReturnedAtMs||0)>0&&now-Number(x.v.hospitalReturnedAtMs)<HOSPITAL_CALL_DRIVE_MS;}).map(function(x){const i=Math.max(0,fleet.findIndex(function(q){return q.v.name===x.v.name;})),savedLeft=Number(x.v.hospitalReturnFromLeft),fromLeft=Number.isFinite(savedLeft)&&savedLeft>0?savedLeft:104,endY=parkingTops[Math.min(7,i)]+3.05,startAngle=fromLeft<100?90:-90;return'<img class="hospital-route-vehicle returning" data-route-kind="return" data-start-x="'+fromLeft+'" data-start-y="'+HOSPITAL_ROAD_CENTER_Y+'" data-end-x="'+HOSPITAL_PARKED_CENTER_X+'" data-end-y="'+endY.toFixed(3)+'" data-start-ms="'+Number(x.v.hospitalReturnedAtMs)+'" data-duration-ms="'+HOSPITAL_CALL_DRIVE_MS+'" data-start-height="'+HOSPITAL_ROAD_ART_HEIGHT+'" data-end-height="'+HOSPITAL_PARKED_ART_HEIGHT+'" data-start-angle="'+startAngle+'" data-end-angle="90" src="'+esc(startVehicleAsset(x.v))+'" alt="รถกลับเข้าช่อง '+(i+1)+' ของ '+esc(home)+'">';}).join('');
   const waiting=roadCalled.slice(0,HOSPITAL_ROAD_CAPACITY).map(function(v,i){const s=normalizedVehicleStart(v),full=s.crew.length>=START_VEHICLE_SEATS&&s.crew.indexOf(STATE.me.name)<0,age=s.roadEnteredAtMs?now-s.roadEnteredAtMs:99999,arriving=age<HOSPITAL_CALL_DRIVE_MS,delay=Math.max(0,HOSPITAL_CALL_DRIVE_MS-age),cannotReturn=arriving||s.manifestLocked||s.crew.length>0,left=hospitalRoadQueueLeft(i);return'<div class="hospital-waiting-vehicle '+(arriving?'arriving':'')+'" data-vehicle="'+esc(v.name)+'" data-queue-left="'+left+'" style="left:'+left+'%;'+(arriving?'animation-delay:'+delay+'ms':'')+'"><img src="'+esc(startVehicleAsset(v))+'" alt=""><span class="hospital-waiting-label">'+esc(v.name)+' · '+s.crew.length+'/'+START_VEHICLE_SEATS+(arriving?' · กำลังเข้าจอด':'')+'</span><div class="hospital-waiting-actions"><button type="button" class="btn sm primary" data-act="hospitalVehicleBoard" data-vehicle="'+esc(v.name)+'" '+(full||arriving?'disabled':'')+'>ขึ้นรถ</button><button type="button" class="btn sm ghost" data-act="hospitalVehicleReturn" data-vehicle="'+esc(v.name)+'" '+(cannotReturn?'disabled':'')+'>คืนเข้าที่จอด</button></div></div>';}).join('');
-  const commander=activeCommanderName(STATE.roster),commandButton=noVehicleStart&&!commander?'<button class="btn primary" data-act="selfCommander">ฉันคือ Command</button>':(noVehicleStart&&commander?'<span class="badge ok">Command: '+esc(commander)+'</span>':'');
-  const readyPanel=noVehicleStart?'<div class="hospital-staging-ready '+(myRoster.stagingReady?'ready':'')+'"><span class="badge '+(myRoster.stagingReady?'ok':'neutral')+'">'+(myRoster.stagingReady?'พร้อม · Command เห็นสีเขียว':'ยังไม่พร้อม')+'</span><button class="btn '+(myRoster.stagingReady?'ghost':'primary')+'" data-act="hospitalStagingReady" '+(hospitalReadyPending?'disabled aria-busy="true"':'')+'>'+(hospitalReadyPending?'กำลังบันทึก…':myRoster.stagingReady?'ยกเลิกพร้อม':'✓ พร้อมปฏิบัติงาน')+'</button>'+commandButton+'</div>':'';
-  return'<div class="startgame-shell">'+startgameTopbar(home,'PLAYER STAGING · HOSPITAL SUPPLY')+'<div class="startgame-world-viewport"><div class="hospital-base-stage '+(noVehicleStart?'no-vehicle-start':'')+'" data-start-world="hospital_base"><button type="button" class="hospital-hotspot supply" data-act="hospitalSupplyOpen" aria-label="เดินไปเปิด Hospital Supply"></button>'+parking+animations+returnAnimations+waiting+((window.MCIPhone&&MCIPhone.isPhone())?'':readyPanel)+'<div class="start-world-players"></div><div class="hospital-wait-status">'+esc(status)+'</div><div class="hospital-help">'+(noVehicleStart?'ไม่มีรถสำหรับ Player · กดพร้อมแล้วรอ Commander ส่งตรงเข้าเต็นท์':'รถออกจากลาน ผ่านประตูกลาง แล้วเลี้ยวขวา · คันแรกจอดขวาสุด · BUS มาจากศูนย์รถสนับสนุนภายนอก')+'</div></div></div>'+((window.MCIPhone&&MCIPhone.isPhone())?'<div class="mci-ready-dock">'+readyPanel+'</div>':'')+startgamePlayerOverlays()+'</div>';
+  const commander=activeCommanderName(STATE.roster),commandButton=selectedGameMode()==='EXTERN'?'':noVehicleStart&&!commander?'<button class="btn primary" data-act="selfCommander">ฉันคือ Command</button>':(noVehicleStart&&commander?'<span class="badge ok">Command: '+esc(commander)+'</span>':'');
+  const readyPanel=noVehicleStart?'<div class="hospital-staging-ready '+(myRoster.stagingReady?'ready':'')+'"><span class="badge '+(myRoster.stagingReady?'ok':'neutral')+'">'+(selectedGameMode()==='EXTERN'?'EXTERN · ไม่ต้องรอ Command':myRoster.stagingReady?'พร้อม · Command เห็นสีเขียว':'ยังไม่พร้อม')+'</span><button class="btn '+(myRoster.stagingReady?'ghost':'primary')+'" data-act="hospitalStagingReady" '+(hospitalReadyPending?'disabled aria-busy="true"':'')+'>'+(hospitalReadyPending?'กำลังบันทึก…':myRoster.stagingReady?'ยกเลิกพร้อม':'✓ พร้อมปฏิบัติงาน')+'</button>'+commandButton+'</div>':'';
+  return'<div class="startgame-shell">'+startgameTopbar(home,'PLAYER STAGING · HOSPITAL SUPPLY')+'<div class="startgame-world-viewport"><div class="hospital-base-stage '+(noVehicleStart?'no-vehicle-start':'')+'" data-start-world="hospital_base"><button type="button" class="hospital-hotspot supply" data-act="hospitalSupplyOpen" aria-label="เดินไปเปิด Hospital Supply"></button>'+parking+animations+returnAnimations+waiting+((window.MCIPhone&&MCIPhone.isPhone())?'':readyPanel)+'<div class="start-world-players"></div><div class="hospital-wait-status">'+esc(status)+'</div><div class="hospital-help">'+(noVehicleStart?(selectedGameMode()==='EXTERN'?(STATE.gc.allowPlayerTentMove!==false?'Extern · กดพร้อม → Scene → เดินเลือกเต็นท์เอง':'Extern · กดพร้อม → Scene · แจ้ง GM เพื่อจัดหรือเปลี่ยนเต็นท์'):'ไม่มีรถสำหรับ Player · กดพร้อมแล้วรอ Commander ส่งตรงเข้าเต็นท์'):'รถออกจากลาน ผ่านประตูกลาง แล้วเลี้ยวขวา · คันแรกจอดขวาสุด · BUS มาจากศูนย์รถสนับสนุนภายนอก')+'</div></div></div>'+((window.MCIPhone&&MCIPhone.isPhone())?'<div class="mci-ready-dock">'+readyPanel+'</div>':'')+startgamePlayerOverlays()+'</div>';
 }
 function viewALSInterior(vehicle){
   if(!vehicle)return viewHospitalBase();const start=normalizedVehicleStart(vehicle),used=startVehicleUnits(start,STATE.resources),locked=start.manifestLocked,travel=['FIRST_EN_ROUTE','EN_ROUTE'].indexOf(start.dispatchStatus)>-1,arriveRemain=start.arrivedAtMs?Math.max(0,Math.ceil((start.arrivedAtMs-sharedNowMs())/1000)):0;
@@ -9035,7 +9069,7 @@ function viewALSInterior(vehicle){
   const interior='<div class="als-interior-stage">'+seats+(compact?waitPanel:'<div class="als-manifest"><div class="als-manifest-head"><div><b>Vehicle Manifest · '+esc(vehicle.name)+'</b><div class="hint">อุปกรณ์รถ '+used+'/'+START_VEHICLE_CAPACITY+' หน่วย · ที่นั่ง '+start.crew.length+'/'+START_VEHICLE_SEATS+' · กดอุปกรณ์เพื่อนำออก 1 ชิ้น</div></div><div class="spacer"></div><span class="'+(locked?'manifest-lock':'hint')+'">'+(locked?'🔒 MANIFEST LOCKED':'🔓 แก้ไขได้')+'</span></div><div class="capacity-track"><span style="width:'+Math.min(100,used/START_VEHICLE_CAPACITY*100)+'%"></span></div><div class="als-manifest-items">'+items+'</div></div><div class="als-controls"><div class="als-control-card als-crew-panel"><b>สถานะ Crew</b><div class="crew-ready-list">'+crew+'</div><button class="btn primary block" data-act="vehicleReadyToggle" data-vehicle="'+esc(vehicle.name)+'">✓ พร้อมออกปฏิบัติการ</button><button class="btn ghost block" style="margin-top:7px" data-act="vehicleLeave">ลงจากรถ</button></div></div>')+'</div>';
   return'<div class="startgame-shell">'+startgameTopbar(vehicle.name,travel?'EN ROUTE TO SCENE':normU(vehicle.type)+' INTERIOR · WAITING DISPATCH')+'<div class="startgame-world-viewport"><div class="vehicle-workspace'+(compact?' compact':'')+'">'+mobileManifest+'<aside class="startgame-side-slot">'+supplyPanel+'</aside><main class="vehicle-interior-slot">'+interior+'</main></div></div>'+startgamePlayerOverlays()+'</div>';
 }
-function viewFirstArrival(vehicle){const start=normalizedVehicleStart(vehicle||{}),remaining=Math.max(250,Number(start.arrivedAtMs||sharedNowMs()+START_TRAVEL_MS)-sharedNowMs()),scenario=startScenario(STATE.gc.scenarioId),type=normU(vehicle&&vehicle.type||'BLS'),name=vehicle&&vehicle.name||type;return'<div class="first-arrival-overlay"><div class="first-arrival-card"><div class="eyebrow">FIRST RESPONSE</div><h1>'+esc(name)+' กำลังเข้าสู่ Scene</h1><p class="hint">'+esc((scenario&&scenario.label)||'MCI')+' · GM ส่ง First Responder พร้อม '+esc(type)+' เข้าจุดเกิดเหตุ</p><div class="first-arrival-road"><img class="first-arrival-ambulance" style="animation-duration:'+remaining+'ms" src="'+esc(startVehicleAsset(vehicle||{type:'BLS'}))+'" alt="'+esc(type)+'"></div><div class="first-arrival-progress"><span style="animation-duration:'+remaining+'ms"></span></div><p class="hint" style="margin-top:12px">รถวิ่งจากซ้ายไปขวา · เมื่อจอดคุณจะลงในแผนผัง Scene อัตโนมัติ</p></div>'+startgameBackpackDock()+viewStartBagModal()+viewToasts()+'</div>'}
+function viewFirstArrival(vehicle){const start=normalizedVehicleStart(vehicle||{}),remaining=Math.max(250,Number(start.arrivedAtMs||sharedNowMs()+START_TRAVEL_MS)-sharedNowMs()),duration=Math.max(250,Number(start.arrivedAtMs)-Number(start.dispatchStartedAtMs)||remaining),offset=Math.max(0,duration-remaining),scenario=startScenario(STATE.gc.scenarioId),type=normU(vehicle&&vehicle.type||'BLS'),name=vehicle&&vehicle.name||type;return'<div class="first-arrival-overlay"><div class="first-arrival-card"><div class="eyebrow">EN ROUTE TO SCENE</div><h1>'+esc(name)+' กำลังเข้าสู่ Scene</h1><p class="hint">'+esc((scenario&&scenario.label)||'MCI')+' · เดินทางจากโรงพยาบาลด้วย '+esc(type)+' เข้าจุดเกิดเหตุ</p><div class="first-arrival-road"><img class="first-arrival-ambulance" style="animation-duration:'+duration+'ms;animation-delay:-'+offset+'ms" src="'+esc(startVehicleAsset(vehicle||{type:'BLS'}))+'" alt="'+esc(type)+'"></div><div class="first-arrival-progress"><span style="animation-duration:'+duration+'ms;animation-delay:-'+offset+'ms"></span></div><p class="hint" style="margin-top:12px">รถวิ่งจากซ้ายไปขวา · เมื่อจอดคุณจะลงในแผนผัง Scene อัตโนมัติ</p></div>'+startgameBackpackDock()+viewStartBagModal()+viewToasts()+'</div>'}
 function viewIncidentSceneFullscreen(scenario){
   return'<div class="startgame-shell"><div class="incident-fullscreen">'+(scenario.asset?'<img src="'+esc(scenario.asset)+'" alt="'+esc(scenario.label)+'">':'')+'<div class="incident-fullscreen-head"><div><b>'+esc(scenario.label)+' · INCIDENT SCENE</b><small>SCENE VIEW · A1</small></div><div class="spacer"></div><button type="button" class="btn primary" data-act="fieldIncidentClose">← ออกจาก Scene</button></div></div>'+startgamePlayerOverlays()+'</div>';
 }
@@ -9064,7 +9098,8 @@ function viewSceneBootstrap(){
 }
 function viewPlayerStartFlow(){
   if(STATE.gc.status==='ENDED')return viewTwoDWorld();
-  const location=startPlayerLocation();if(location==='SCENE'){const active=(STATE.ui.twoD&&STATE.ui.twoD.activeZone)||twoDZoneForStation(STATE.me.station);return active&&active!=='COMMAND'?viewTwoDWorld():viewSceneBootstrap();}if(location==='FIRST_EN_ROUTE'){const v=startVehicleForPlayer();return viewFirstArrival(v);}if(location==='VEHICLE')return viewALSInterior(startVehicleForPlayer());if(location==='EN_ROUTE')return viewALSInterior(startVehicleForPlayer());return viewHospitalBase();
+  if(playerSceneJourneyActive()){scheduleSceneJourneyEnd();const r=startPlayerRecord();return viewFirstArrival({name:'รถพยาบาล',type:'BLS',start:{dispatchStartedAtMs:r.sceneDepartureAtMs,arrivedAtMs:r.sceneArrivalAtMs}});}
+  const location=startPlayerLocation();if(location==='SCENE'){const active=(STATE.ui.twoD&&STATE.ui.twoD.activeZone)||twoDZoneForStation(STATE.me.station);return active&&active!=='COMMAND'?viewTwoDWorld():viewSceneBootstrap();}if(location==='FIRST_EN_ROUTE'){const v=startVehicleForPlayer();return viewFirstArrival(v);}if(location==='VEHICLE')return viewALSInterior(startVehicleForPlayer());if(location==='EN_ROUTE')return viewFirstArrival(startVehicleForPlayer());return viewHospitalBase();
 }
 function commanderFirstTeamPanel(){
   return'';
@@ -10390,7 +10425,7 @@ function gmTabControl(){
   if(!sceneReady())startProblems.push('ยังไม่ได้เผยแพร่/ข้าม Scene Setup');
   if(hospitalStartEnabled(gc)&&!fieldZonesReady())startProblems.push('Zone ยังไม่ครบ');
   if(!STATE.patients.length)startProblems.push('ยังไม่ได้สุ่มผู้ป่วย');
-  if(!activeCommanderName(STATE.roster))startProblems.push('ยังไม่มี Command');
+  if(selectedGameMode(gc)!=='EXTERN'&&!activeCommanderName(STATE.roster))startProblems.push('ยังไม่มี Command');
   if(hospitalStartEnabled(gc)&&!normalizedFirstTeam(gc).firstResponder)startProblems.push('ยังไม่ได้ส่ง First Responder');
   else if(hospitalStartEnabled(gc)&&!deploymentReady)startProblems.push('First Responder ยังไม่ถึง Scene');
   const startStatus=gc.status==='RUNNING'?'✅ เกมกำลังดำเนินอยู่':gc.status==='ENDED'?'ภารกิจจบแล้ว · กด Reset เพื่อเริ่มรอบใหม่':startProblems.length?'⚠️ '+startProblems.join(' · '):'✅ พร้อมเริ่มเกม';
@@ -12007,7 +12042,7 @@ if(window.MCIAudio)MCIAudio.setProviders(mciLocalAudioSnapshot,mciVehicleAudioSn
 document.addEventListener('click',function(e){if(!window.MCIAudio)return;const btn=e.target.closest('[data-act]');if(btn&&['clinicalCheck','txStart','supplyTake','supplyReturn'].includes(btn.dataset.act))MCIAudio.cue('treatment');},true);
 
 window.addEventListener('pagehide',function(){if(STATE.me.name)saveLocalSession();});
-document.documentElement.dataset.mciVersion='6.23.0';
+document.documentElement.dataset.mciVersion='6.24.0';
 boot();
 })();
 
