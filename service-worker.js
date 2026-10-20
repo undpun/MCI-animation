@@ -1,4 +1,4 @@
-const CACHE_VERSION='mci-2d-v6.24-extern-journey-1';
+const CACHE_VERSION='mci-2d-v6.25-patient-flow-no-audio-1';
 const APP_SHELL=[
   './',
   './index.html',
@@ -10,19 +10,6 @@ const APP_SHELL=[
   './mci-i18n.js',
   './mci-runtime-en.js',
   './mci-physiology-en.js',
-  './mci-audio.js',
-  './mci-audio.css',
-  './assets-sound/scene_ambience.mp3',
-  './assets-sound/siren.mp3',
-  './assets-sound/vehicle_engine.mp3',
-  './assets-sound/radio_chirp.mp3',
-  './assets-sound/footstep.mp3',
-  './assets-sound/treatment_gear.mp3',
-  './assets-sound/patient_moan_1.mp3',
-  './assets-sound/patient_moan_2.mp3',
-  './assets-sound/patient_moan_3.mp3',
-  './assets-sound/patient_bed.mp3',
-  './assets-sound/monitor.mp3',
   './asset-manifest.json',
   './offline.html',
   './manifest.webmanifest',

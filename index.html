@@ -1633,7 +1633,6 @@ button,.btn,.tab,.switchbtn,select,input[type=checkbox],input[type=radio]{touch-
 </style>
 <link rel="stylesheet" href="mci-phone.css">
 <link rel="stylesheet" href="mci-walk.css">
-<link rel="stylesheet" href="mci-audio.css?v=6.13">
 <style>.join-language-select{display:flex;gap:8px;margin:12px 0 18px}.join-language-select label{flex:1;cursor:pointer;border:1px solid #6db8be66;background:#122732;color:#e9f8f9;padding:10px;border-radius:10px;text-align:center;font-weight:700}.join-language-select label:has(input:checked){border-color:#63eadb;background:#1b494c}.join-language-select input{accent-color:#63eadb;margin-right:6px}</style>
 <script src="mci-phone.js" defer></script>
 </head>
@@ -1655,7 +1654,6 @@ button,.btn,.tab,.switchbtn,select,input[type=checkbox],input[type=radio]{touch-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script src="mci-client.js?v=6.20"></script>
 <script src="mci-walk.js"></script>
-<script src="mci-audio.js?v=6.19"></script>
 <script src="mci-i18n.js?v=6.9.3-language-4"></script>
 <script src="mci-runtime-en.js?v=6.9.3-language-4"></script>
 <script src="mci-physiology-en.js?v=6.9.1-language-2"></script>
@@ -3041,7 +3039,7 @@ function mciExpireLocalPlayer(){
   if(STATE.ui.twoD)STATE.ui.twoD={activeZone:null,activeTentId:null,panelOpen:false,walking:false};
   STATE.ui.startPanel=null;STATE.ui.startFriendClientId=null;
   twoDPendingPosition=null;twoDLastPosition=null;clearLocalSession();
-  if(window.MCIAudio)MCIAudio.update(null);
+  
   render(true);toast('การเชื่อมต่อสิ้นสุด กรุณาลงชื่อเข้าเกมใหม่','err');
 }
 function mciPeerRefresh(clientId){
@@ -3925,7 +3923,7 @@ function resolveTransits(patients, elapsed){
       return Object.assign({}, p, {stage:'SECONDARY',tentId:p.transit.destinationTentId||p.tentId||null,overflowTarget:null,overflowSinceMs:null,pendingTentId:null,secondaryArrivalTime:p.secondaryArrivalTime!=null?p.secondaryArrivalTime:p.transit.arriveElapsed, transit:null});
     }
     if(p.transit.toStage==='TX'){
-      return Object.assign({}, p, {stage:'TX',tentId:p.transit.destinationTentId||p.tentId||null,overflowTarget:null,overflowSinceMs:null,pendingTentId:null,txZone:p.transit.txZone, txArrivalTime:p.txArrivalTime!=null?p.txArrivalTime:p.transit.arriveElapsed, transit:null});
+      return Object.assign({}, p, {stage:'TX',tentId:(activeFieldTents('TX_'+normU(p.secondary||p.transit.txZone))[0]||{}).id||null,overflowTarget:null,overflowSinceMs:null,pendingTentId:null,txZone:normU(p.secondary||p.transit.txZone), txArrivalTime:p.txArrivalTime!=null?p.txArrivalTime:p.transit.arriveElapsed, transit:null});
     }
     return Object.assign({}, p, {transit:null});
   });
@@ -3945,8 +3943,10 @@ function elapsedMinutes(gc){
 
 function txSlotStatus(slot, elapsed){
   if(!slot) return null;
-  if(elapsed < slot.startedAt) return 'PENDING';
-  const doneAt = slot.startedAt + slot.durationSec/60;
+  const start=Number(slot.startedAt),duration=Number(slot.durationSec);
+  if(slot.startedAt==null||slot.durationSec==null||!Number.isFinite(start)||!Number.isFinite(duration)||duration<0)return 'PENDING';
+  if(elapsed < start) return 'PENDING';
+  const doneAt = start + duration/60;
   return elapsed < doneAt ? 'IN_PROGRESS' : 'SUCCESS';
 }
 function allTreatmentSlots(p){
@@ -3956,7 +3956,7 @@ function patientTxStatuses(p, elapsed){
   return allTreatmentSlots(p).map(function(s){ return txSlotStatus(s, elapsed); });
 }
 function hasAnyTxInProgress(p, elapsed){
-  return patientTxStatuses(p, elapsed).indexOf('IN_PROGRESS') > -1;
+  return patientTxStatuses(p, elapsed).some(function(status){return status==='IN_PROGRESS'||status==='PENDING';});
 }
 function requiredTxComplete(p, caseObj, elapsed){
   const required = (caseObj && caseObj.reqTx) || [];
@@ -6168,7 +6168,7 @@ async function dispatchOverflowQueue(){
   const now=sharedNowMs(),elapsed=elapsedMinutes(STATE.gc);const result=await kvRootTransaction(function(root){
     const patients=(root[KEYS.patients]||[]).slice(),field=normalizeFieldZones(root[KEYS.fieldZones],root[KEYS.resources]||STATE.resources),porters=normalizePorterPool(root[KEYS.porters]),jobs=Object.assign({},porters.jobs||{});let changed=false;
     const rank={RED:0,YELLOW:1,GREEN:2,BLACK:3};patients.sort(function(a,b){const age=Number(a.overflowSinceMs||0)-Number(b.overflowSinceMs||0);if(age)return age;const ar=rank[normU(a.secondary||a.primary)],br=rank[normU(b.secondary||b.primary)];return(ar==null?9:ar)-(br==null?9:br);});
-    patients.forEach(function(p){if(!p.overflowTarget||p.pendingTentId)return;const target=chooseActiveTent(p.overflowTarget,patients,field);if(!target)return;const already=Object.values(jobs).some(function(j){return normU(j.patientId)===normU(p.id)&&j.status!=='done';});if(already)return;
+    patients.forEach(function(p){if(hasAnyTxInProgress(p,elapsed))return;if(p.overflowTarget&&p.overflowTarget.indexOf('TX_')===0&&p.secondary&&p.overflowTarget!=='TX_'+normU(p.secondary)){p.overflowTarget=normU(p.secondary)==='BLACK'?null:'TX_'+normU(p.secondary);p.pendingTentId=null;changed=true;}if(!p.overflowTarget||p.pendingTentId)return;const target=chooseActiveTent(p.overflowTarget,patients,field);if(!target)return;const already=Object.values(jobs).some(function(j){return normU(j.patientId)===normU(p.id)&&j.status!=='done';});if(already)return;
       if(effectiveCanWalk(p)==='yes'){
         if(p.overflowTarget==='LOADING')Object.assign(p,{stage:'TRANSFER',tentId:target.id,pendingTentId:null,overflowTarget:null,overflowSinceMs:null,dispo:'TRANSFER',transferArrivalTime:elapsed,transferOrder:maxOrder(patients,'transferOrder')+1,events:(p.events||[]).concat([{t:elapsed,type:'OVERFLOW_SELF_WALK '+target.id,by:'SYSTEM'}])});
         else{const toStage=p.overflowTarget==='SECONDARY'?'SECONDARY':'TX',txZone=toStage==='TX'?p.overflowTarget.replace('TX_',''):null,dur=toStage==='SECONDARY'?transitMinutes('primary','secondary','yes','distSecondary'):transitMinutes('secondary',TX_ZONE_TENT_TYPE[txZone]||'red','yes','distTreatment');Object.assign(p,{stage:'TRANSIT',pendingTentId:target.id,transit:{fromStage:toStage==='SECONDARY'?'PRIMARY':'SECONDARY',toStage:toStage,txZone:txZone,destinationTentId:target.id,startElapsed:elapsed,arriveElapsed:elapsed+dur},events:(p.events||[]).concat([{t:elapsed,type:'OVERFLOW_SELF_WALK '+target.id,by:'SYSTEM'}])});}changed=true;
@@ -6207,7 +6207,7 @@ async function completeTreatmentWalkOut(patientId){
   patientId=normU(patientId);const elapsed=elapsedMinutes(STATE.gc),now=sharedNowMs(),loadingTent=activeFieldTents('LOADING')[0]||null;if(!loadingTent)return false;
   const result=await kvPatientsTransaction(function(patients){
     const idx=patients.findIndex(function(p){return normU(p.id)===patientId;});if(idx<0)return null;
-    const p=patients[idx],manual=!!p.treatmentWalkOutManual;if(p.stage!=='TX'||effectiveCanWalk(p)!=='yes'||!p.treatmentWalkOutStartedAtMs||(!manual&&!hasCompletedTreatmentInsideTent(p,elapsed)))return null;
+    const p=patients[idx],manual=!!p.treatmentWalkOutManual;if(p.stage!=='TX'||effectiveCanWalk(p)!=='yes'||!p.treatmentWalkOutStartedAtMs||(!manual||hasAnyTxInProgress(p,elapsed)))return null;
     const loadingCapacity=Math.max(1,activeFieldTents('LOADING').reduce(function(sum,t){return sum+Number(t.capacity||0);},0)||20),reserved=patients.filter(function(x){return x.stage==='TRANSFER';}).length;
     if(reserved>=loadingCapacity)return null;
     const by=p.treatmentWalkOutRequestedBy||'SYSTEM',walkEvent=manual?'TX_MANUAL_WALK_OUT_REACHED_DOOR':'TX_WALK_OUT_REACHED_DOOR',copy=patients.slice();copy[idx]=Object.assign({},p,{stage:'TRANSFER',dispo:'TRANSFER',tentId:loadingTent.id,pendingTentId:null,transit:null,transferOrder:maxOrder(patients,'transferOrder')+1,transferArrivalTime:elapsed,treatmentWalkOutStartedAtMs:null,treatmentWalkOutFallbackAtMs:null,treatmentWalkOutManual:false,treatmentWalkOutRequestedBy:null,greenAutoExitStartedAtMs:null,greenAutoExitAtMs:null,events:(p.events||[]).concat([{t:elapsed,type:walkEvent,by:by},{t:elapsed,type:'TO_TRANSFER',by:by}])});releaseNextTreatmentWaiter(copy,p.txZone,elapsed);return copy;
@@ -6215,28 +6215,25 @@ async function completeTreatmentWalkOut(patientId){
   if(result.committed){STATE.patients=result.patients;return true;}return false;
 }
 function releaseNextTreatmentWaiter(patients,freedColor,elapsed){
-  freedColor=normU(freedColor);const waiting=patients.filter(function(x){return x.stage==='SECONDARY'&&normU(x.txHoldZone)===freedColor;}).sort(function(a,b){return Number(a.secondaryOrder||0)-Number(b.secondaryOrder||0);});
+  freedColor=normU(freedColor);const waiting=patients.filter(function(x){return x.stage==='SECONDARY'&&normU(x.txHoldZone)===freedColor&&normU(x.secondary)===freedColor&&!hasAnyTxInProgress(x,elapsed);}).sort(function(a,b){return Number(a.secondaryOrder||0)-Number(b.secondaryOrder||0);});
   if(!waiting.length)return patients;const w=waiting[0],wi=patients.findIndex(function(x){return normU(x.id)===normU(w.id);}),zoneTentType=TX_ZONE_TENT_TYPE[freedColor]||'red',durMin=transitMinutes('secondary',zoneTentType,effectiveCanWalk(w),'distTreatment');
   if(wi>=0)patients[wi]=Object.assign({},w,{txHoldZone:null,stage:'TRANSIT',transit:{fromStage:'SECONDARY',toStage:'TX',txZone:freedColor,startElapsed:elapsed,arriveElapsed:elapsed+durMin},events:(w.events||[]).concat([{t:elapsed,type:'TX_HOLD_RELEASE '+freedColor,by:'AUTO'}])});return patients;
 }
 async function resolveTreatmentWalkOuts(elapsed){
   const now=sharedNowMs(),minVisibleDwellMs=1200,fallbackMs=6000,loadingTent=activeFieldTents('LOADING')[0]||null;if(!loadingTent)return false;
-  const hasWork=(STATE.patients||[]).some(function(p){return p&&p.stage==='TX'&&effectiveCanWalk(p)==='yes'&&!patientIsDead(p,elapsed)&&(p.treatmentWalkOutStartedAtMs||(hasCompletedTreatmentInsideTent(p,elapsed)&&computeTxStatus(p,findCase(STATE.cases,p.id),elapsed)==='STABILIZED'));});if(!hasWork)return false;
+  const hasWork=(STATE.patients||[]).some(function(p){return p&&p.stage==='TX'&&effectiveCanWalk(p)==='yes'&&!patientIsDead(p,elapsed)&&p.treatmentWalkOutStartedAtMs;});if(!hasWork)return false;
   const loadingCapacity=Math.max(1,activeFieldTents('LOADING').reduce(function(sum,t){return sum+Number(t.capacity||0);},0)||20);
   const result=await kvPatientsTransaction(function(patients){
     let changed=false,transferOrder=maxOrder(patients,'transferOrder'),reserved=patients.filter(function(p){return p.stage==='TRANSFER'||!!p.treatmentWalkOutStartedAtMs;}).length,freedColors=[];
     const next=patients.map(function(p){
       if(!p||p.stage!=='TX'||effectiveCanWalk(p)!=='yes'||patientIsDead(p,elapsed))return p;
       if(p.treatmentWalkOutStartedAtMs){
-        const manual=!!p.treatmentWalkOutManual;if(!manual&&!hasCompletedTreatmentInsideTent(p,elapsed)){changed=true;reserved=Math.max(0,reserved-1);return Object.assign({},p,{treatmentWalkOutStartedAtMs:null,treatmentWalkOutFallbackAtMs:null,treatmentWalkOutManual:false,treatmentWalkOutRequestedBy:null,greenAutoExitStartedAtMs:null,greenAutoExitAtMs:null,events:(p.events||[]).concat([{t:elapsed,type:'TX_WALK_OUT_CANCEL_NO_TREATMENT',by:'SYSTEM'}])});}
+        const manual=!!p.treatmentWalkOutManual;if(!manual||hasAnyTxInProgress(p,elapsed)){changed=true;reserved=Math.max(0,reserved-1);return Object.assign({},p,{treatmentWalkOutStartedAtMs:null,treatmentWalkOutFallbackAtMs:null,treatmentWalkOutManual:false,treatmentWalkOutRequestedBy:null,greenAutoExitStartedAtMs:null,greenAutoExitAtMs:null,events:(p.events||[]).concat([{t:elapsed,type:'TX_WALK_OUT_CANCEL_NO_TREATMENT',by:'SYSTEM'}])});}
         if(now-Number(p.treatmentWalkOutStartedAtMs)<fallbackMs)return p;
         changed=true;transferOrder+=1;freedColors.push(p.txZone);const by=p.treatmentWalkOutRequestedBy||'SYSTEM',walkEvent=manual?'TX_MANUAL_WALK_OUT_FALLBACK_COMPLETE':'TX_WALK_OUT_FALLBACK_COMPLETE';
         return Object.assign({},p,{stage:'TRANSFER',dispo:'TRANSFER',tentId:loadingTent.id,pendingTentId:null,transit:null,transferOrder:transferOrder,transferArrivalTime:elapsed,treatmentWalkOutStartedAtMs:null,treatmentWalkOutFallbackAtMs:null,treatmentWalkOutManual:false,treatmentWalkOutRequestedBy:null,greenAutoExitStartedAtMs:null,greenAutoExitAtMs:null,events:(p.events||[]).concat([{t:elapsed,type:walkEvent,by:by},{t:elapsed,type:'TO_TRANSFER',by:by}])});
       }
-      const arrivedElapsed=Number(p.txArrivalTime);if(Number.isFinite(arrivedElapsed)&&(elapsed-arrivedElapsed)*60000<minVisibleDwellMs)return p;
-      if(reserved>=loadingCapacity||hasAnyTxInProgress(p,elapsed)||!hasCompletedTreatmentInsideTent(p,elapsed)||computeTxStatus(p,findCase(STATE.cases,p.id),elapsed)!=='STABILIZED')return p;
-      changed=true;reserved+=1;
-      return Object.assign({},p,{treatmentWalkOutStartedAtMs:now,treatmentWalkOutFallbackAtMs:now+fallbackMs,treatmentWalkOutManual:false,treatmentWalkOutRequestedBy:null,greenAutoExitStartedAtMs:null,greenAutoExitAtMs:null,events:(p.events||[]).concat([{t:elapsed,type:'TX_WALK_OUT_START',by:'SYSTEM'}])});
+      return p; // Depart only after an explicit player order.
     });
     freedColors.forEach(function(color){releaseNextTreatmentWaiter(next,color,elapsed);});
     return changed?next:null;
@@ -7217,6 +7214,11 @@ async function secondarySetField(id, field, value){
       if(normU(x.id)!==normU(id))return x;
       const patch=mkPatch(field,value);
       if(field==='primary'){return x;}else if(field==='secondary'){
+        if(x.stage!=='SECONDARY')return x;
+        patch.secondary=normU(value);
+        patch.txHoldZone=x.txHoldZone?(normU(value)==='BLACK'?null:normU(value)):null;
+        patch.overflowTarget=x.overflowTarget&&x.overflowTarget.indexOf('TX_')===0?(normU(value)==='BLACK'?null:'TX_'+normU(value)):x.overflowTarget;
+        patch.pendingTentId=null;
         const caseObj=findCase(STATE.cases,x.id),snapshot=captureTriageSnapshot(x,caseObj,elapsed),answer=calculateSecondarySort(snapshot);
         if(!answer.valid){toast('คำนวณ Triage Sort ไม่ได้: '+answer.error,'err');return x;}
         patch.secondaryDecisionTime=elapsed;
@@ -7385,7 +7387,11 @@ async function requestPorterJob(patientId,fromZone,toZone,requestId){
   if(!current){toast('ไม่พบผู้ป่วย','err');return false;}
   if(hasAnyTxInProgress(current,elapsed)){toast('ผู้ป่วยกำลังรักษาอยู่ ต้องรอให้การรักษาเสร็จก่อนเรียกพนักงานเปล','err');return false;}
   let already=false,fail='';
-  const result=await kvPortersTransaction(function(porters){
+  const result=await kvRootTransaction(function(root){
+    const live=(root[KEYS.patients]||[]).find(function(p){return normU(p.id)===patientId;});
+    if(!live||hasAnyTxInProgress(live,elapsedMinutes(root[KEYS.gc]||STATE.gc))){fail='ผู้ป่วยกำลังรักษาอยู่ ยังเรียกพนักงานเปลไม่ได้';return null;}
+    if(fromZone==='SECONDARY'&&toZone.indexOf('TX_')===0)toZone='TX_'+normU(live.secondary);
+    const porters=normalizePorterPool(root[KEYS.porters]);
     const jobs=Object.assign({},porters.jobs||{});
     const existing=Object.keys(jobs).find(function(k){return jobs[k].patientId===patientId&&jobs[k].status!=='done';});
     if(existing){
@@ -7395,9 +7401,9 @@ async function requestPorterJob(patientId,fromZone,toZone,requestId){
     }
     jobs[jobId]={id:jobId,requestId:requestId,patientId:patientId,fromZone:fromZone,toZone:toZone,status:'requested',requestedBy:STATE.me.name||'',requestedAt:elapsed,requestedAtMs:nowMs};
     const nextPorters=autoAssignPorterJobs(Object.assign({},porters,{jobs:jobs}),elapsed,'SYSTEM');
-    return nextPorters;
+    root[KEYS.porters]=nextPorters;return root;
   });
-  if(already||result.committed){STATE.porters=result.porters||STATE.porters;const job=porterJobForPatient(patientId);toast(job&&job.status==='assigned'?'พนักงานเปลว่างกำลังมารับผู้ป่วย':'ส่งคำขอแล้ว · รอ GM ส่งพนักงานเปลเข้าพื้นที่',job&&job.status==='assigned'?'ok':'');render(true);return true;}
+  if(already||result.committed){STATE.porters=result.root&&result.root[KEYS.porters]||STATE.porters;const job=porterJobForPatient(patientId);toast(job&&job.status==='assigned'?'พนักงานเปลว่างกำลังมารับผู้ป่วย':'ส่งคำขอแล้ว · รอ GM ส่งพนักงานเปลเข้าพื้นที่',job&&job.status==='assigned'?'ok':'');render(true);return true;}
   toast(fail||'ส่งคำขอพนักงานเปลไม่สำเร็จ กรุณาลองอีกครั้ง','err');return false;
 }
 async function deployPortersToScene(quantity){
@@ -7498,7 +7504,7 @@ async function completePorterJob(jobId,options){
       else if(fromZone==='PRIMARY'&&p.stage==='PRIMARY'&&p.primary){
         next=Object.assign({},p,{stage:'SECONDARY',primaryTime:elapsed,primaryOrder:maxOrder(patients,'primaryOrder')+1,primaryDest:'SECONDARY',secondaryArrivalTime:elapsed,transit:null,events:(p.events||[]).concat([{t:elapsed,type:'PRIMARY_SECONDARY',by:by},{t:elapsed,type:'PORTER_ARRIVED SECONDARY',by:'PORTER'}])});
       }else if(fromZone==='SECONDARY'&&p.stage==='SECONDARY'&&p.secondary&&p.secondary!=='BLACK'){
-        next=Object.assign({},p,{stage:'TX',secondaryTime:elapsed,secondaryOrder:maxOrder(patients,'secondaryOrder')+1,secondaryDest:'TX',txHoldZone:null,txZone:p.secondary,txArrivalTime:elapsed,transit:null,events:(p.events||[]).concat([{t:elapsed,type:'SECONDARY_TX',by:by},{t:elapsed,type:'PORTER_ARRIVED TX_'+p.secondary,by:'PORTER'}])});
+        next=Object.assign({},p,{stage:'TX',secondaryTime:elapsed,secondaryOrder:maxOrder(patients,'secondaryOrder')+1,secondaryDest:'TX',txHoldZone:null,txZone:normU(p.secondary),tentId:(activeFieldTents('TX_'+normU(p.secondary),normalizeFieldZones(root[KEYS.fieldZones],root[KEYS.resources]||STATE.resources))[0]||{}).id||null,pendingTentId:null,overflowTarget:null,txArrivalTime:elapsed,transit:null,events:(p.events||[]).concat([{t:elapsed,type:'SECONDARY_TX',by:by},{t:elapsed,type:'PORTER_ARRIVED TX_'+p.secondary,by:'PORTER'}])});
       }else if(fromZone.indexOf('TX_')===0&&p.stage==='TX'&&toZone==='LOADING'&&!hasAnyTxInProgress(p,elapsed)){
         next=Object.assign({},p,{dispo:'TRANSFER',transferOrder:maxOrder(patients,'transferOrder')+1,transferArrivalTime:elapsed,stage:'TRANSFER',events:(p.events||[]).concat([{t:elapsed,type:'TO_TRANSFER',by:by},{t:elapsed,type:'PORTER_ARRIVED LOADING',by:'PORTER'}])});
       }else if(fromZone.indexOf('TX_')===0&&p.stage==='TX'&&toZone==='DISCHARGE'&&!hasAnyTxInProgress(p,elapsed)){
@@ -7852,6 +7858,7 @@ async function txStartItem(id, slotIndex, item, location){
     const pi=livePatients.findIndex(function(x){return normU(x.id)===id;});
     if(pi<0){fail='ไม่พบผู้ป่วย #'+id;return null;}
     const liveP=livePatients[pi];
+    if(liveP.treatmentWalkOutStartedAtMs||liveP.overflowTarget||Object.values((root[KEYS.porters]||{}).jobs||{}).some(function(job){return normU(job.patientId)===id&&job.status!=='done';})){fail='ผู้ป่วยมีคำสั่งเคลื่อนย้ายอยู่ กรุณายกเลิกการเคลื่อนย้ายก่อนเริ่มรักษา';return null;}
     if(inTriage&&liveP.stage!==location){fail='ผู้ป่วยไม่ได้อยู่ใน '+location+' Triage';return null;}
     if(!inTriage&&liveP.stage!=='TX'){fail='ผู้ป่วยไม่ได้อยู่ใน Treatment zone';return null;}
     if(computeTxStatus(liveP,caseObj,elapsed)==='DEAD'){fail='ผู้ป่วยเสียชีวิตแล้วและต้องค้างใน Treatment';return null;}
@@ -8532,7 +8539,7 @@ function twoDPlayerPayload(){
   Object.keys((STATE.porters&&STATE.porters.jobs)||{}).forEach(function(k){const j=STATE.porters.jobs[k];if(j&&j.status!=='done')porterByPatient[j.patientId]=j;});
   vehicleRequests().forEach(function(r){if(r&&r.level==='LOADING_TO_PARKING'&&r.status==='PENDING'&&r.reservedVehicleId)loadingRequestByVehicle[r.reservedVehicleId]=r.id;});
   return{name:STATE.me.name||'PLAYER',gender:STATE.me.gender||'MALE',clientId:STATE.me.clientId||null,station:STATE.me.station||null,headNames:communicationHeadNames(),status:STATE.gc.status,resetVersion:Number(STATE.gc.resetVersion||0),elapsed:elapsed,serverNowMs:nowMs,overviewPos:(STATE.ui.twoD&&STATE.ui.twoD.overviewPos)||null,carried:(STATE.carried&&STATE.carried[STATE.me.clientId])||{},bagCapacity:PLAYER_BAG_CAPACITY,resourceWeights:resourceWeights,bagUsageByClient:bagUsageByClient,
-    patients:patients.map(function(p){const c=dashboardPatientColor(p,elapsed),activeSlot=(p.tx||[]).find(function(s){return s&&txSlotStatus(s,elapsed)==='IN_PROGRESS';}),job=porterByPatient[normU(p.id)],remainMs=activeSlot?Math.max(0,((Number(activeSlot.startedAt||0)+Number(activeSlot.durationSec||0)/60)-elapsed)*60000):0,endMs=activeSlot?nowMs+remainMs:0,startMs=activeSlot?endMs-Number(activeSlot.durationSec||0)*1000:0;return{id:p.id,gender:caseGender(findCase(STATE.cases,p.id)||p),scene:twoDPatientScene(p),txColor:String(p.txZone||'').toLowerCase(),primary:String(p.primary||'').toLowerCase(),secondary:String(p.secondary||'').toLowerCase(),color:String(c||'gray').toLowerCase(),mobile:effectiveCanWalk(p)==='yes',dead:patientIsDead(p,elapsed),primaryScenePos:p.primaryScenePos||null,transferring:twoDPatientTransferring(p),treatmentWalkingOut:!!p.treatmentWalkOutStartedAtMs,holding:!!p.txHoldZone,holdColor:String(p.txHoldZone||'').toLowerCase(),txActiveItem:activeSlot?activeSlot.item:'',txActiveRemainSec:activeSlot?remainMs/1000:0,txActiveDurationSec:activeSlot?activeSlot.durationSec:0,txActiveStartMs:startMs,txActiveEndMs:endMs,porterJobId:job?job.id:'',porterJobStatus:job?job.status:'',porterJobToZone:job?job.toZone:'',boardedVehicle:p.boardedVehicle||'',boardedAtMs:Number(p.boardedAtMs||0)};}),
+    patients:patients.map(function(p){const c=dashboardPatientColor(p,elapsed),activeSlot=(p.tx||[]).find(function(s){return s&&txSlotStatus(s,elapsed)==='IN_PROGRESS';}),job=porterByPatient[normU(p.id)],remainMs=activeSlot?Math.max(0,((Number(activeSlot.startedAt||0)+Number(activeSlot.durationSec||0)/60)-elapsed)*60000):0,endMs=activeSlot?nowMs+remainMs:0,startMs=activeSlot?endMs-Number(activeSlot.durationSec||0)*1000:0;return{id:p.id,gender:caseGender(findCase(STATE.cases,p.id)||p),scene:twoDPatientScene(p),txColor:String(p.txZone||'').toLowerCase(),primary:String(p.primary||'').toLowerCase(),secondary:String(p.secondary||'').toLowerCase(),color:String(c||'gray').toLowerCase(),mobile:effectiveCanWalk(p)==='yes',dead:patientIsDead(p,elapsed),primaryScenePos:p.primaryScenePos||null,transferring:twoDPatientTransferring(p),treatmentWalkingOut:!!p.treatmentWalkOutStartedAtMs&&!!p.treatmentWalkOutManual&&!hasAnyTxInProgress(p,elapsed),holding:!!p.txHoldZone,holdColor:String(p.txHoldZone||'').toLowerCase(),txActiveItem:activeSlot?activeSlot.item:'',txActiveRemainSec:activeSlot?remainMs/1000:0,txActiveDurationSec:activeSlot?activeSlot.durationSec:0,txActiveStartMs:startMs,txActiveEndMs:endMs,porterJobId:job?job.id:'',porterJobStatus:job?job.status:'',porterJobToZone:job?job.toZone:'',boardedVehicle:p.boardedVehicle||'',boardedAtMs:Number(p.boardedAtMs||0)};}),
     vehicles:(STATE.vehicles||[]).map(function(v){const boarded=patients.filter(function(p){return p.stage==='TRANSFER'&&p.boardedVehicle===v.name&&p.boardedAtMs;}).map(function(p){return normU(p.id);});return{name:v.name,type:v.type,state:vehicleDeploymentState(v,elapsed),workflowState:vehicleWorkflowState(v,elapsed),parkingSlot:v.parkingSlot,parkingDepartureSlot:v.parkingDepartureSlot,parkingLanePos:v.parkingLanePos,loadingQueuePos:v.loadingQueuePos,previousQueuePos:v.previousQueuePos,queueFromPos:v.queueFromPos,queueShiftStartMs:Number(v.queueShiftStartMs||0),queueShiftDurationMs:Number(v.queueShiftDurationMs||0),loadingRequestId:v.loadingRequestId||loadingRequestByVehicle[v.name]||'',animationStartMs:Number(v.animationStartMs||0),animationDurationMs:Number(v.animationDurationMs||0),parkingEntryStartMs:Number(v.parkingEntryStartMs||0),parkingEntryDurationMs:Number(v.parkingEntryDurationMs||0),parkingExitStartMs:Number(v.parkingExitStartMs||0),parkingExitDurationMs:Number(v.parkingExitDurationMs||0),loadingEntryStartMs:Number(v.loadingEntryStartMs||0),loadingEntryDurationMs:Number(v.loadingEntryDurationMs||0),bayAnimationStartMs:Number(v.bayAnimationStartMs||0),bayAnimationDurationMs:Number(v.bayAnimationDurationMs||0),loadingDepartureStartMs:Number(v.loadingDepartureStartMs||0),loadingDepartureDurationMs:Number(v.loadingDepartureDurationMs||0),returnedFromLoading:!!v.returnedFromLoading,loadedPatientIds:vehicleWorkflowState(v,elapsed)==='HOSPITAL_TRIP'?(v.loadedPatientIds||boarded):boarded};}),
     vehicleRequests:vehicleRequests().filter(function(r){return ['PARKING_TO_COMMAND','LOADING_TO_PARKING'].indexOf(r.level)>-1&&r.status==='PENDING';}).map(function(r){return{id:r.id,requestId:r.requestId||r.id,level:r.level,type:r.type,status:r.status,requestedBy:r.requestedBy,requestedAt:r.requestedAt,requestedAtMs:r.requestedAtMs,reservedVehicleId:r.reservedVehicleId||''};}),
     hospitals:(STATE.hospitals||[]).map(function(h){return{name:h.name,outboundMin:h.outboundMin,distanceMin:h.distanceMin,redFree:Math.max(0,Number(h.redCap||0)-Number(h.redUsed||0)),yellowFree:Math.max(0,Number(h.yellowCap||0)-Number(h.yellowUsed||0)),greenFree:Math.max(0,Number(h.greenCap||0)-Number(h.greenUsed||0))};}),positions:STATE.positions||{}};
@@ -8770,7 +8777,7 @@ function walkStartWorldTo(scene,x,y,after){
   return new Promise(function(resolve){let finished=false,segmentIndex=0;const walkGeneration=window.__mciWalkGeneration;
     const finish=async function(){if(finished)return;if(walkGeneration!==window.__mciWalkGeneration){finished=true;resolve(false);return;}finished=true;if(window.MCIWalk)MCIWalk.stop(player);if(startWorldInteractionTimer){clearTimeout(startWorldInteractionTimer);startWorldInteractionTimer=null;}if(startWorldActiveAnimation){try{startWorldActiveAnimation.cancel();}catch(e){}startWorldActiveAnimation=null;}startWorldInteractionBusy=false;twoDLastPosition={name:STATE.me.name,gender:STATE.me.gender,clientId:STATE.me.clientId,scene:scene,x:finalPoint.x,y:finalPoint.y,facing:finalFacing,at:Date.now(),station:STATE.me.station||null};updateStartWorldPlayers();queueTwoDPosition(twoDLastPosition,true);try{if(typeof after==='function')await after();if(backgroundRenderPending)scheduleBackgroundRender();resolve(true);}catch(e){console.warn('start-world interaction skipped',e);if(backgroundRenderPending)scheduleBackgroundRender();resolve(false);}};
     const runSegment=function(){if(finished||walkGeneration!==window.__mciWalkGeneration)return;if(!player||segmentIndex>=path.length-1||!duration||typeof player.animate!=='function'){finish();return;}const a=path[segmentIndex],b=path[segmentIndex+1],facing=startWorldFacing(a,b),angle=startWorldFacingAngle(facing),segmentDistance=Math.hypot(b.x-a.x,b.y-a.y),segmentDuration=Math.max(60,duration*segmentDistance/Math.max(1,distance));player.dataset.facing=facing;player.style.setProperty('--facing-angle',angle+'deg');player.style.transitionDuration='0ms';player.style.left=(a.x/START_WORLD_WIDTH*100)+'%';player.style.top=(a.y/START_WORLD_HEIGHT*100)+'%';player.dataset.x=String(a.x);player.dataset.y=String(a.y);if(window.MCIWalk){MCIWalk.attach(player,STATE.me.gender,facing);MCIWalk.start(player,facing,segmentDistance/segmentDuration*1000);}void player.offsetWidth;startWorldActiveAnimation=player.animate([{left:(a.x/START_WORLD_WIDTH*100)+'%',top:(a.y/START_WORLD_HEIGHT*100)+'%'},{left:(b.x/START_WORLD_WIDTH*100)+'%',top:(b.y/START_WORLD_HEIGHT*100)+'%'}],{duration:segmentDuration,easing:'linear',fill:'forwards'});startWorldActiveAnimation.finished.then(function(){if(finished||walkGeneration!==window.__mciWalkGeneration)return;try{startWorldActiveAnimation.cancel();}catch(e){}startWorldActiveAnimation=null;player.style.left=(b.x/START_WORLD_WIDTH*100)+'%';player.style.top=(b.y/START_WORLD_HEIGHT*100)+'%';player.dataset.x=String(b.x);player.dataset.y=String(b.y);segmentIndex++;runSegment();}).catch(function(){if(walkGeneration!==window.__mciWalkGeneration){finished=true;resolve(false);}});};
-    const streamTimer=setInterval(function(){if(finished||!player||!player.isConnected||walkGeneration!==window.__mciWalkGeneration){clearInterval(streamTimer);return;}const st=getComputedStyle(player),stage=player.parentElement.parentElement;const x=parseFloat(st.left)/Math.max(1,stage.clientWidth)*START_WORLD_WIDTH,y=parseFloat(st.top)/Math.max(1,stage.clientHeight)*START_WORLD_HEIGHT;if(Number.isFinite(x)&&Number.isFinite(y)){if(window.MCIAudio)MCIAudio.motion({scene:scene,x:x,y:y});queueTwoDPosition({scene:scene,x:x,y:y,facing:player.dataset.facing||'south'},true);}},100);
+    const streamTimer=setInterval(function(){if(finished||!player||!player.isConnected||walkGeneration!==window.__mciWalkGeneration){clearInterval(streamTimer);return;}const st=getComputedStyle(player),stage=player.parentElement.parentElement;const x=parseFloat(st.left)/Math.max(1,stage.clientWidth)*START_WORLD_WIDTH,y=parseFloat(st.top)/Math.max(1,stage.clientHeight)*START_WORLD_HEIGHT;if(Number.isFinite(x)&&Number.isFinite(y)){queueTwoDPosition({scene:scene,x:x,y:y,facing:player.dataset.facing||'south'},true);}},100);
     startWorldInteractionTimer=setTimeout(finish,duration+350);if(!duration)setTimeout(finish,0);else runSegment();
   });
 }
@@ -8893,8 +8900,8 @@ async function handleTwoDFrameMessage(e){
   if(m.type==='ready'){twoDFrameReady=true;twoDLastSync='';twoDLastNavigateScene='';updateTwoDPlayerHost();return;}
   if(m.type==='navigated'){if(p.scene==='overview'){twoDLastNavigateScene='';updateTwoDPlayerHost();return;}const host=document.getElementById('twoDPlayerHost'),active=(STATE.ui.twoD&&STATE.ui.twoD.activeZone)||twoDZoneForStation(STATE.me.station),scene=active&&TWO_D_ZONES[active]?TWO_D_ZONES[active].scene:null;if(scene===p.scene&&host&&!host.classList.contains('hidden'))f.style.opacity='1';return;}
   if(m.type==='walkStart'){collapseTwoDWindowsForMovement();return;}
-  if(m.type==='uiOpen'){collapseCommunicationPanel();if(window.MCIAudio)MCIAudio.close();return;}
-  if(m.type==='move'){if(p.scene==='overview')return;STATE.ui.twoD.lastScene=p.scene||'overview';if(p.scene==='overview'&&Number.isFinite(Number(p.x))&&Number.isFinite(Number(p.y)))STATE.ui.twoD.overviewPos={x:Number(p.x),y:Number(p.y)};if(window.MCIAudio)MCIAudio.motion(p);queueTwoDPosition(p,false);return;}
+  if(m.type==='uiOpen'){collapseCommunicationPanel();return;}
+  if(m.type==='move'){if(p.scene==='overview')return;STATE.ui.twoD.lastScene=p.scene||'overview';if(p.scene==='overview'&&Number.isFinite(Number(p.x))&&Number.isFinite(Number(p.y)))STATE.ui.twoD.overviewPos={x:Number(p.x),y:Number(p.y)};queueTwoDPosition(p,false);return;}
   if(m.type==='zoneEnter'){if(!playerTentMoveAllowed()){blockPlayerTentMove();restoreLockedPlayerZone();return;}await enterTwoDZone(p.zone);return;}if(m.type==='zoneExit'){if(!playerTentMoveAllowed()){blockPlayerTentMove();restoreLockedPlayerZone();return;}await exitTwoDZone();return;}
   if(m.type==='treatmentWalkOutArrived'){await completeTreatmentWalkOut(p.patientId);return;}
   if(STATE.gc.status!=='RUNNING'&&['patientClick','supplyClick','vehicleRequest','parkingDispatchVehicle','loadingBoardPatient','loadingUnboardPatient','loadingSendVehicle','loadingReturnVehicle','porterJobArrived'].indexOf(m.type)>-1){toast('เกมยังไม่เริ่ม — เดินสำรวจและเข้า Zone ได้ แต่ยังทำ Triage หรือ Treatment ไม่ได้','err');if(p.requestId)twoDFramePost('actionResult',{action:m.type==='loadingSendVehicle'?'sendVehicle':m.type==='loadingUnboardPatient'?'unboardPatient':m.type==='loadingReturnVehicle'?'returnVehicle':m.type,requestId:p.requestId,patientId:p.patientId,vehicleId:p.vehicleId,ok:false,message:'เกมยังไม่เริ่ม'});return;}
@@ -12009,40 +12016,9 @@ function boot(){
   }
 }
 
-/* Audio uses a read-only view of existing game state. No sound state is sent to Firebase. */
-function mciLocalAudioSnapshot(){
- if(!STATE.ready||STATE.gc.status!=='RUNNING'||STATE.gc.clockPaused)return {status:STATE.gc.status,paused:!!STATE.gc.clockPaused};
- const elapsed=elapsedMinutes(STATE.gc),station=STATE.me&&STATE.me.station||'',zone=station==='TX_RED'?'RED':station==='TX_YELLOW'?'YELLOW':station==='TX_GREEN'?'GREEN':'';
- let voiceCount=0,monitorCount=0;
- if(station==='PRIMARY'||station==='SECONDARY'||station==='LOADING'||zone){
-  for(const p of STATE.patients||[]){
-   const nearby=station==='PRIMARY'?p.stage==='PRIMARY':station==='SECONDARY'?p.stage==='SECONDARY':station==='LOADING'?p.stage==='TRANSFER':p.stage==='TX'&&String(p.txZone||'').toUpperCase()===zone;
-   if(!nearby)continue;
-   const c=findCase(STATE.cases,p.id)||{},derived=dynamicPhysiologyAt(c,elapsed,patientPhysiologyTreatmentEvents(p));
-   if(physiologyModel(c)?derived.status==='DEAD':computeTxStatus(p,c,elapsed)==='DEAD')continue;
-   if(zone)monitorCount=Math.min(5,monitorCount+1);
-   const v=Object.assign({},c,derived.vitals||{},{terminalState:derived.status||null},p.vitals||{},p.currentVitals||{},p.physiology||{},p.currentPhysiology||{}),gcs=Number(v.gcs||15);
-   if(gcs>=10&&gcs<=15&&v.breathing!==false)voiceCount=Math.min(5,voiceCount+1);
-   if(voiceCount===5&&(!zone||monitorCount===5))break;
-  }
- }
- const messages=[];
- if(station==='COMMANDER'||communicationZoneForStation(station)){
-   const zones=station==='COMMANDER'?communicationZones():[communicationZoneForStation(station)];
-   zones.forEach(function(z){communicationMessagesForZone(z).slice(-3).forEach(function(m){messages.push({id:m.id,at:Number(m.at||0),urgent:m.kind==='urgent',incoming:communicationIncomingForMe(m,z)});});});
- }
- return {status:STATE.gc.status,paused:!!STATE.gc.clockPaused,station:station,voiceCount:voiceCount,monitorCount:monitorCount,
-  messages:messages,position:twoDLastPosition&&{scene:twoDLastPosition.scene,x:twoDLastPosition.x,y:twoDLastPosition.y}};
-}
-function mciVehicleAudioSnapshot(){
- return {status:STATE.ready?STATE.gc.status:'WAITING',paused:!!STATE.gc.clockPaused,now:sharedNowMs(),station:STATE.me&&STATE.me.station||'',vehicles:STATE.vehicles||[],position:twoDLastPosition,
-  sirenSources:activeFieldTents('PARKING').concat(activeFieldTents('LOADING')).map(function(t){const q=fieldTentDoorPoint(t);return{x:q.x,y:q.y,zone:t.type};})};
-}
-if(window.MCIAudio)MCIAudio.setProviders(mciLocalAudioSnapshot,mciVehicleAudioSnapshot);
-document.addEventListener('click',function(e){if(!window.MCIAudio)return;const btn=e.target.closest('[data-act]');if(btn&&['clinicalCheck','txStart','supplyTake','supplyReturn'].includes(btn.dataset.act))MCIAudio.cue('treatment');},true);
 
 window.addEventListener('pagehide',function(){if(STATE.me.name)saveLocalSession();});
-document.documentElement.dataset.mciVersion='6.24.0';
+document.documentElement.dataset.mciVersion='6.25.0';
 boot();
 })();
 
