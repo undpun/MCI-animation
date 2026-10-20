@@ -11426,7 +11426,9 @@ function gmTabDebrief(options){
     ? '<div class="mission-complete"><div class="mc-kicker">DEBRIEF READY</div><div class="mc-title">พร้อมทบทวนภารกิจ</div><div class="mc-meta">เมื่อกดเริ่ม ผู้เล่นทุกคนจะถูกย้ายจากหน้าจบภารกิจไปยัง Timeline ส่วนตัวพร้อมกัน</div><button class="btn primary" data-act="gmStartDebrief" style="margin-top:14px">▶ เริ่ม Debrief สำหรับทุกคน</button></div>'
     : (STATE.gc.debriefActive?'<div class="mission-complete"><div class="mc-kicker">DEBRIEF ACTIVE</div><div class="mc-title">กำลัง Debrief</div><div class="mc-meta">ผู้เล่นทุกคนกำลังดู Timeline ของตัวเอง · GM ยังสามารถกรองและดูภาพรวมทั้งหมดด้านล่าง</div></div>':'');
   const savePanel=!archived&&STATE.gc.status==='ENDED'?'<div class="card archive-save-panel"><div class="flexrow" style="justify-content:space-between;align-items:flex-end"><div class="flex1"><div class="eyebrow">SAVE FULL SNAPSHOT</div><h3 style="margin-bottom:5px">บันทึก GM Dashboard และ Debrief ไว้เปิดหลัง Reset</h3><div class="hint" style="margin-bottom:9px">เก็บผู้ป่วย ผู้เล่น Timeline รถ โรงพยาบาล ทรัพยากร Scene และ Communication แบบอ่านอย่างเดียว</div><input type="text" id="archiveNameInput" data-preserve data-enter-act="archiveSave" maxlength="80" value="'+esc(STATE.gc.archiveName||'')+'" placeholder="เช่น MCI Extern รุ่น 12 · รอบเช้า"></div><button class="btn primary" data-act="archiveSave">'+(STATE.gc.archiveId?'💾 อัปเดต Snapshot':'💾 บันทึก Snapshot')+'</button></div>'+(STATE.gc.archiveId?'<div class="hint" style="margin-top:9px;color:var(--accent)">บันทึกแล้วในชื่อ “'+esc(STATE.gc.archiveName||'')+'” · สามารถแก้ชื่อแล้วกดอัปเดตได้</div>':'')+'</div>':'';
-  return savePanel+launch+'<div class="grid cols-4">'
+  const playerSelector='<div class="card section-gap"><h3>Debrief ภาพรวม / รายบุคคล</h3><div class="hint">เลือกชื่อเพื่อดูผลการตัดสินใจ เหตุผลทางคลินิก และ Timeline เฉพาะผู้เล่น รวมถึงผู้เล่นที่ออกจากเกมแล้ว</div><div class="timeline-filter" style="margin-top:12px">'+playerButtons+'</div></div>';
+  if(playerFilter!=='ALL')return savePanel+launch+playerSelector+viewPersonalDebrief({name:playerFilter,gmView:true,entries:entries});
+  return savePanel+launch+playerSelector+'<div class="grid cols-4">'
     +statCard('Primary Triage ถูก',percentOf(primaryCorrect.length,primaryRecords.length)+'<div class="summary-detail">'+primaryCorrect.length+'/'+primaryRecords.length+' ครั้ง</div>')
     +statCard('Secondary Triage ถูก',percentOf(secondaryCorrect.length,secondaryRecords.length)+'<div class="summary-detail">'+secondaryCorrect.length+'/'+secondaryRecords.length+' ครั้ง</div>')
     +statCard('Overtriage',over.length+'<div class="summary-detail">โดย '+actorBreakdown(over)+'</div>')
@@ -11445,18 +11447,19 @@ function gmTabDebrief(options){
     +'<div class="timeline-filter-row"><div class="timeline-filter-label">กรองตามประเภทงาน · เปิด/ปิดร่วมกับ Player ได้</div><div class="timeline-filter">'+categoryButtons+'</div></div>'
     +'<div class="master-timeline">'+(rows||'<div class="zone-empty">ยังไม่มีเหตุการณ์ในตัวกรองนี้</div>')+'</div></div>';
 }
-function viewPersonalDebrief(){
-  const elapsed=elapsedMinutes(STATE.gc),name=STATE.me.name||'';
-  const entries=buildMasterTimeline(elapsed).filter(function(e){return e.by===name;});
+function viewPersonalDebrief(options){
+  const gmView=!!(options&&options.gmView);
+  const elapsed=elapsedMinutes(STATE.gc),name=gmView?options.name:(STATE.me.name||'');
+  const entries=((options&&options.entries)||buildMasterTimeline(elapsed)).filter(function(e){return e.by===name;});
   const reviewCtx={gc:STATE.gc,cases:STATE.cases,patients:STATE.patients},decisionReviews=clinicalDecisionReviews(entries,reviewCtx),correct=decisionReviews.filter(function(x){return x.kind==='good';}).length,caution=decisionReviews.filter(function(x){return x.kind==='caution';}).length,needsReview=decisionReviews.filter(function(x){return x.kind==='bad';}).length;
   const categories={PRIMARY:0,SECONDARY:0,TREATMENT:0,TRANSFER:0,COMMUNICATION:0};entries.forEach(function(e){const c=debriefEventCategory(e.type);if(categories[c]!=null)categories[c]++;});
   const rows=entries.map(function(e){
     const decision=clinicalDecisionReview(e,reviewCtx),legacy=decision?null:eventCorrectness(e),evaluation=decision?{kind:decision.kind,text:decision.category}:legacy;
     return '<div class="timeline-event '+timelineCategory(e.type)+'"><div class="timeline-time">'+timelineClock(e.t)+' <span class="hint">(+'+fmtClock(e.t)+')</span></div><div class="timeline-desc">'+esc(timelineDescription(e))+'</div>'
       +(evaluation?'<div><span class="eval-badge '+(evaluation.kind||(evaluation.ok?'good':'bad'))+'">'+esc(evaluation.text)+'</span></div>':'')
-      +'<div class="timeline-meta">'+(e.patient?'Patient No. '+esc(e.patient.id)+' · ':'')+'บันทึกจากสถานีของคุณ</div></div>';
+      +'<div class="timeline-meta">'+(e.patient?'Patient No. '+esc(e.patient.id)+' · ':'')+(gmView?'ดำเนินการโดย '+esc(name):'บันทึกจากสถานีของคุณ')+'</div></div>';
   }).join('');
-  return '<div class="personal-debrief-head"><div class="eyebrow">PERSONAL PERFORMANCE REVIEW</div><h1>'+stationHeading('commander','Debrief · '+esc(name))+'</h1><p>Timeline นี้แสดงเฉพาะการตัดสินใจและการปฏิบัติงานของคุณ เพื่อทบทวนสิ่งที่ทำได้ดีและจุดที่ควรแก้ไข</p>'
+  return '<div class="personal-debrief-head"><div class="eyebrow">PERSONAL PERFORMANCE REVIEW</div><h1>'+stationHeading('commander','Debrief · '+esc(name))+'</h1><p>Timeline นี้แสดงเฉพาะการตัดสินใจและการปฏิบัติงานของ '+(gmView?esc(name):'คุณ')+' เพื่อทบทวนสิ่งที่ทำได้ดีและจุดที่ควรแก้ไข</p>'
     +'<div class="personal-score-grid"><div class="personal-score"><b>'+decisionReviews.length+'</b><span>การตัดสินใจที่ประเมินได้</span></div><div class="personal-score"><b style="color:var(--green)">'+correct+'</b><span>ถูก/เหมาะสม</span></div><div class="personal-score"><b style="color:var(--amber)">'+caution+'</b><span>ยังไม่ definitive</span></div><div class="personal-score"><b style="color:var(--red)">'+needsReview+'</b><span>ผิด/ควรทบทวน</span></div></div></div>'
     +'<div class="card"><div class="flexrow" style="justify-content:space-between;margin-bottom:12px"><div><h3 style="margin-bottom:3px">My Clinical Decision Review</h3><div class="hint">เหตุผล 5 ส่วนเฉพาะการตัดสินใจของ '+esc(name)+'</div></div><span class="badge neutral">'+decisionReviews.length+' decisions</span></div><div class="clinical-decision-review">'+(clinicalDecisionCardsHtml(decisionReviews,reviewCtx)||'<div class="zone-empty">ยังไม่มีการตัดสินใจที่ประเมินได้</div>')+'</div></div>'
     +'<div class="card section-gap"><div class="flexrow" style="justify-content:space-between;margin-bottom:16px"><div><h3 style="margin-bottom:3px">My Event Timeline</h3><div class="hint">Primary '+categories.PRIMARY+' · Secondary '+categories.SECONDARY+' · Treatment '+categories.TREATMENT+' · Transfer '+categories.TRANSFER+' · Radio '+categories.COMMUNICATION+'</div></div><span class="badge neutral">เฉพาะ '+esc(name)+'</span></div><div class="master-timeline">'+(rows||'<div class="zone-empty">ไม่พบเหตุการณ์ที่ดำเนินการด้วยชื่อผู้เล่นนี้</div>')+'</div></div>';
@@ -12018,7 +12021,7 @@ function boot(){
 
 
 window.addEventListener('pagehide',function(){if(STATE.me.name)saveLocalSession();});
-document.documentElement.dataset.mciVersion='6.25.0';
+document.documentElement.dataset.mciVersion='6.26.0';
 boot();
 })();
 

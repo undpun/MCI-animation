@@ -1,0 +1,13 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const html=fs.readFileSync(__dirname+'/index.html','utf8');
+const start=html.indexOf('function gmTabDebrief(options)'),end=html.indexOf('/* ============================================================',start);
+assert(start>=0&&end>start);
+const events=[{by:'Alice',type:'PRIMARY',t:1,description:'ALICE_ONLY',kind:'good'},{by:'Bob',type:'TREATMENT',t:2,description:'BOB_ONLY',kind:'bad'}];
+const ctx={STATE:{gc:{status:'RUNNING',participants:{Departed:{}}},me:{name:'Bob'},patients:[],cases:[],roster:{Alice:{}},debriefPlayerFilter:'Alice',archiveDebriefPlayerFilter:'Departed'},elapsedMinutes:()=>3,buildMasterTimeline:()=>events,clinicalDecisionReviews:es=>es,clinicalDecisionReview:e=>({kind:e.kind,category:e.type}),clinicalDecisionCardsHtml:es=>es.map(e=>e.description).join('|'),debriefEventCategory:t=>t,timelineCategory:t=>t,timelineClock:t=>t,fmtClock:t=>t,timelineDescription:e=>e.description,esc:s=>String(s).replaceAll('<','&lt;').replaceAll('"','&quot;'),stationHeading:(_,s)=>s,debriefTriageRecords:()=>[],debriefTreatmentRecords:()=>[],debriefVehicleRecords:()=>[],vehicleRequests:()=>[],avgMetric:()=>0,uniq:a=>[...new Set(a)],percentOf:()=>0,actorBreakdown:()=>'',statCard:(_,v)=>String(v),eventCorrectness:()=>null};
+vm.createContext(ctx);vm.runInContext(html.slice(start,end),ctx);
+let out=ctx.gmTabDebrief();assert(out.includes('ALICE_ONLY'));assert(!out.includes('BOB_ONLY'));assert(out.includes('Debrief · Alice'));assert.equal(ctx.STATE.me.name,'Bob');
+out=ctx.viewPersonalDebrief();assert(out.includes('BOB_ONLY'));assert(!out.includes('ALICE_ONLY'));
+out=ctx.gmTabDebrief({archived:true});assert(out.includes('Debrief · Departed'));assert(out.includes('ไม่พบเหตุการณ์'));assert(out.includes('archiveDebriefFilter'));assert.equal(ctx.STATE.debriefPlayerFilter,'Alice');
+ctx.STATE.debriefPlayerFilter='ALL';out=ctx.gmTabDebrief();assert(out.includes('ALICE_ONLY')&&out.includes('BOB_ONLY'));
+ctx.STATE.debriefPlayerFilter='missing';out=ctx.gmTabDebrief();assert.equal(ctx.STATE.debriefPlayerFilter,'ALL');
+console.log('PASS: GM individual isolation, player self review, departed participant, archive selection isolation, overview and missing-player fallback.');

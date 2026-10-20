@@ -1,4 +1,4 @@
-const CACHE_VERSION='mci-2d-v6.25-patient-flow-no-audio-1';
+const CACHE_VERSION='mci-2d-v6.26-gm-personal-debrief-1';
 const APP_SHELL=[
   './',
   './index.html',
