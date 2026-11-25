@@ -4025,8 +4025,8 @@ function deathReasonFor(p, elapsed){
   if(model)return model.criticalEndpoint||'เสียชีวิตตาม Dynamic Physiology ของเคส';
   return incompleteTreatmentDeathReason(p,c);
 }
-function effectiveCanWalk(p){
-  const c=findCase(STATE.cases,p.id);
+function effectiveCanWalk(p,cases=STATE.cases){
+  const c=findCase(cases,p.id);
   return c ? c.canWalk : p.canWalk;
 }
 /* v4.1 — Correct triage is a decision-time physiology snapshot.  The first
@@ -4899,6 +4899,9 @@ async function returnLoadingVehicleToParking(vehicleName,requestId){
     if(vehicleWorkflowState(target,elapsed)!=='LOADING_BAY'){fail='รถไม่ได้จอดอยู่หน้า Loading';return null;}
     const onboard=patients.some(function(p){return p.stage==='TRANSFER'&&p.boardedVehicle===vehicleName&&p.boardedAtMs;});
     if(onboard||Number((target.loadedPatientIds||[]).length)>0){fail='นำผู้ป่วยลงจากรถให้ครบก่อน';return null;}
+    if(pendingLoadingPassengers(patients,vehicleName,(root[KEYS.porters]||{}).jobs).length){
+      fail='ยังมีผู้ป่วยรอพนักงานเปลนำขึ้นรถคันนี้';return null;
+    }
     const slot=firstFreeParkingSlot(vehicles,vehicleName);if(slot==null){fail='Parking เต็ม 12 ช่อง';return null;}
     const lane=nextParkingLanePos(vehicles),parkingStart=nowMs+500,parkingDuration=PARKING_ENTRY_VISUAL_MS;
     root[KEYS.vehicles]=vehicles.map(function(v){return v.name===vehicleName?Object.assign({},v,{deploymentState:'TO_PARKING',workflowState:'INCOMING',originHospital:'Loading',busyHospital:null,busyStartElapsed:elapsed,busyUntilElapsed:elapsed+(parkingDuration+500)/60000,parkingSlot:slot,parkingLanePos:lane,parkingDepartureSlot:null,loadingQueuePos:null,previousQueuePos:null,queueFromPos:null,loadingRequestId:null,loadedPatientIds:[],returnedFromLoading:true,loadingDepartureStartMs:nowMs,loadingDepartureDurationMs:1800,parkingEntryStartMs:parkingStart,parkingEntryDurationMs:parkingDuration,animationStartMs:parkingStart,animationDurationMs:parkingDuration,lastReturnParkingRequestId:id}):v;});
@@ -4999,6 +5002,28 @@ function calcVehicleLoad(type, total, sitting, lying, hospitalCount){
     return {ok:true,label:'พร้อมส่ง'};
   }
   return {ok:true,label:'พร้อมส่ง'};
+}
+function boardedLoadingPatients(patients,vehicleName){
+  return patients.filter(function(p){return p.stage==='TRANSFER'&&p.boardedVehicle===vehicleName&&p.boardedAtMs;});
+}
+function pendingLoadingPassengers(patients,vehicleName,jobs){
+  const reservedIds=new Set(Object.values(jobs||{}).filter(function(job){
+    return job&&job.fromZone==='LOADING'&&job.toZone==='VEHICLE:'+vehicleName&&
+      (job.status==='requested'||job.status==='assigned');
+  }).map(function(job){return normU(job.patientId);}));
+  return patients.filter(function(p){
+    return p.stage==='TRANSFER'&&!p.boardedVehicle&&reservedIds.has(normU(p.id));
+  });
+}
+function loadingPassengerLoad(vehicle,passengers,cases){
+  const sitting=passengers.filter(function(p){return effectiveCanWalk(p,cases)==='yes';}).length;
+  return calcVehicleLoad(vehicle.type||vehicleType(vehicle.name),passengers.length,sitting,passengers.length-sitting,1);
+}
+function loadingBoardingLoad(vehicle,patient,patients,jobs,cases){
+  const passengers=boardedLoadingPatients(patients,vehicle.name)
+    .concat(pendingLoadingPassengers(patients,vehicle.name,jobs))
+    .filter(function(p){return normU(p.id)!==normU(patient.id);});
+  return loadingPassengerLoad(vehicle,passengers.concat(patient),cases);
 }
 function vehicleCapacityNote(type){
   type = normU(type);
@@ -7388,7 +7413,8 @@ async function requestPorterJob(patientId,fromZone,toZone,requestId){
   if(hasAnyTxInProgress(current,elapsed)){toast('ผู้ป่วยกำลังรักษาอยู่ ต้องรอให้การรักษาเสร็จก่อนเรียกพนักงานเปล','err');return false;}
   let already=false,fail='';
   const result=await kvRootTransaction(function(root){
-    const live=(root[KEYS.patients]||[]).find(function(p){return normU(p.id)===patientId;});
+    already=false;
+    const patients=root[KEYS.patients]||[],live=patients.find(function(p){return normU(p.id)===patientId;});
     if(!live||hasAnyTxInProgress(live,elapsedMinutes(root[KEYS.gc]||STATE.gc))){fail='ผู้ป่วยกำลังรักษาอยู่ ยังเรียกพนักงานเปลไม่ได้';return null;}
     if(fromZone==='SECONDARY'&&toZone.indexOf('TX_')===0)toZone='TX_'+normU(live.secondary);
     const porters=normalizePorterPool(root[KEYS.porters]);
@@ -7398,6 +7424,13 @@ async function requestPorterJob(patientId,fromZone,toZone,requestId){
       const job=jobs[existing];
       if(job.fromZone===fromZone&&job.toZone===toZone){already=true;return null;}
       fail='ผู้ป่วยมีคำขอเคลื่อนย้ายอื่นอยู่แล้ว';return null;
+    }
+    if(fromZone==='LOADING'&&toZone.indexOf('VEHICLE:')===0){
+      const vehicle=(root[KEYS.vehicles]||[]).find(function(v){return v.name===toZone.slice(8);});
+      if(!vehicleCanBoardAtLoading(vehicle,elapsed,nowMs)){fail='รถยังไม่ได้จอดรอใน Loading';return null;}
+      if(live.stage!=='TRANSFER'||live.boardedVehicle||patientIsDead(live,elapsed)){fail='ผู้ป่วยไม่พร้อมขึ้นรถ';return null;}
+      const load=loadingBoardingLoad(vehicle,live,patients,jobs,root[KEYS.cases]||STATE.cases);
+      if(!load.ok){fail='ขึ้นรถไม่ได้: '+load.label;return null;}
     }
     jobs[jobId]={id:jobId,requestId:requestId,patientId:patientId,fromZone:fromZone,toZone:toZone,status:'requested',requestedBy:STATE.me.name||'',requestedAt:elapsed,requestedAtMs:nowMs};
     const nextPorters=autoAssignPorterJobs(Object.assign({},porters,{jobs:jobs}),elapsed,'SYSTEM');
@@ -7447,16 +7480,17 @@ async function boardPatientToVehicle(patientId,vehicleName,requestId){
   patientId=normU(patientId);vehicleName=norm(vehicleName);requestId=norm(requestId)||('PB_'+sharedNowMs().toString(36));
   const elapsed=elapsedMinutes(STATE.gc),nowMs=sharedNowMs();let fail='',duplicate=false;
   const result=await kvRootTransaction(function(root){
+    duplicate=false;
     const vehicles=Array.isArray(root[KEYS.vehicles])?root[KEYS.vehicles]:[],patients=Array.isArray(root[KEYS.patients])?root[KEYS.patients]:[];
     const vehicle=vehicles.find(function(v){return v.name===vehicleName;}),patient=patients.find(function(p){return normU(p.id)===patientId;});
     if(!vehicleCanBoardAtLoading(vehicle,elapsed,nowMs)){fail='รถยังไม่ได้จอดรอใน Loading';return null;}
     if(!patient||patient.stage!=='TRANSFER'||patientIsDead(patient,elapsed)){fail='ผู้ป่วยไม่พร้อมขึ้นรถ';return null;}
     if(patient.boardRequestId===requestId||(patient.boardedVehicle===vehicleName&&patient.boardedAtMs)){duplicate=true;return null;}
-    if(patient.boardedVehicle&&patient.boardedVehicle!==vehicleName){fail='ผู้ป่วยอยู่บนรถ '+patient.boardedVehicle+' แล้ว';return null;}
-    const onboard=patients.filter(function(p){return p.stage==='TRANSFER'&&p.boardedVehicle===vehicleName&&p.boardedAtMs;});
-    const candidates=onboard.concat([patient]),sitting=candidates.filter(function(p){return effectiveCanWalk(p)==='yes';}).length,lying=candidates.length-sitting;
-    const load=calcVehicleLoad(normU(vehicle.type||vehicleType(vehicleName)),candidates.length,sitting,lying,1);
+    if(patient.boardedVehicle){fail='ผู้ป่วยอยู่บนรถ '+patient.boardedVehicle+' แล้ว';return null;}
+    const jobs=(root[KEYS.porters]||{}).jobs;
+    const load=loadingBoardingLoad(vehicle,patient,patients,jobs,root[KEYS.cases]||STATE.cases);
     if(!load.ok){fail='ขึ้นรถไม่ได้: '+load.label;return null;}
+    const candidates=boardedLoadingPatients(patients,vehicleName).concat(patient);
     root[KEYS.patients]=patients.map(function(p){return normU(p.id)===patientId?Object.assign({},p,{vehicle:vehicleName,boardedVehicle:vehicleName,boardedAtMs:nowMs,boardRequestId:requestId,events:(p.events||[]).concat([{t:elapsed,type:'BOARD '+vehicleName,by:STATE.me.name||''}])}):p;});
     root[KEYS.vehicles]=vehicles.map(function(v){return v.name===vehicleName?Object.assign({},v,{loadedPatientIds:candidates.map(function(p){return normU(p.id);}),lastBoardedAtMs:nowMs}):v;});
     return root;
@@ -7493,6 +7527,7 @@ async function completePorterJob(jobId,options){
   try{
     const elapsed=elapsedMinutes(STATE.gc),nowMs=sharedNowMs();let fail='',duplicate=false;
     const result=await kvRootTransaction(function(root){
+      fail='';duplicate=false;
       const porters=normalizePorterPool(root[KEYS.porters]),jobs=Object.assign({},porters.jobs||{}),job=jobs[jobId];
       if(!job){duplicate=true;return null;}
       if(job.status!=='assigned'){fail='พนักงานเปลยังไม่ได้รับมอบหมาย';return null;}
@@ -7513,9 +7548,11 @@ async function completePorterJob(jobId,options){
         const color=toZone.slice(3).toUpperCase();if(TX_ZONES.indexOf(color)>-1){if(txActiveBedsUsed(patients,color)>=ACTIVE_TX_BEDS)fail='เตียง '+color+' Treatment เต็ม';else next=Object.assign({},p,{txZone:color,txArrivalTime:elapsed,events:(p.events||[]).concat([{t:elapsed,type:'TX_MOVE_ZONE '+p.txZone+'→'+color,by:by},{t:elapsed,type:'PORTER_ARRIVED '+toZone,by:'PORTER'}])});}
       }else if(fromZone==='LOADING'&&p.stage==='TRANSFER'&&toZone.indexOf('VEHICLE:')===0){
         const vehicleName=toZone.slice(8),vi=vehicles.findIndex(function(v){return v.name===vehicleName;});
-        if(vi<0||!vehicleCanBoardAtLoading(vehicles[vi],elapsed,nowMs))fail='รถยังไม่ได้จอดรอใน Loading';
+        if(p.boardedVehicle)fail='ผู้ป่วยอยู่บนรถ '+p.boardedVehicle+' แล้ว';
+        else if(vi<0||!vehicleCanBoardAtLoading(vehicles[vi],elapsed,nowMs))fail='รถยังไม่ได้จอดรอใน Loading';
         else{
-          const onboard=patients.filter(function(x){return x.stage==='TRANSFER'&&x.boardedVehicle===vehicleName&&x.boardedAtMs&&normU(x.id)!==normU(p.id);}),candidates=onboard.concat([p]),sitting=candidates.filter(function(x){return effectiveCanWalk(x)==='yes';}).length,lying=candidates.length-sitting,load=calcVehicleLoad(normU(vehicles[vi].type||vehicleType(vehicleName)),candidates.length,sitting,lying,1);
+          const candidates=boardedLoadingPatients(patients,vehicleName).concat(p);
+          const load=loadingPassengerLoad(vehicles[vi],candidates,root[KEYS.cases]||STATE.cases);
           if(!load.ok)fail='ขึ้นรถไม่ได้: '+load.label;
           else{next=Object.assign({},p,{vehicle:vehicleName,boardedVehicle:vehicleName,boardedAtMs:nowMs,boardRequestId:'PB_'+jobId,events:(p.events||[]).concat([{t:elapsed,type:'BOARD '+vehicleName,by:by},{t:elapsed,type:'PORTER_ARRIVED '+vehicleName,by:'PORTER'}])});vehicles[vi]=Object.assign({},vehicles[vi],{loadedPatientIds:candidates.map(function(x){return normU(x.id);}),lastBoardedAtMs:nowMs});root[KEYS.vehicles]=vehicles;}
         }
@@ -8085,8 +8122,13 @@ async function dispatchSend(vehicleName,selectedIds,selectedHospital,suppressRen
     let assigned;
     if(explicitSelection){
       if(options.twoD){
-        assigned=patients.filter(function(p){return p.stage==='TRANSFER'&&p.boardedVehicle===vehicleName&&p.boardedAtMs&&wantedIds.indexOf(normU(p.id))>-1;});
-        if(assigned.length!==wantedIds.length){fail='ผู้ป่วยบางคนยังไม่ได้ขึ้นรถจริง';return null;}
+        assigned=boardedLoadingPatients(patients,vehicleName);
+        if(assigned.length!==wantedIds.length||assigned.some(function(p){return wantedIds.indexOf(normU(p.id))<0;})){
+          fail='รายชื่อผู้ป่วยบนรถเปลี่ยนแล้ว กรุณาตรวจสอบและส่งรถอีกครั้ง';return null;
+        }
+        if(pendingLoadingPassengers(patients,vehicleName,(root[KEYS.porters]||{}).jobs).length){
+          fail='ยังมีผู้ป่วยรอพนักงานเปลนำขึ้นรถคันนี้';return null;
+        }
       }else{
       const unavailable=wantedIds.find(function(id){
         const lock=locksNow[id];
@@ -8109,9 +8151,7 @@ async function dispatchSend(vehicleName,selectedIds,selectedHospital,suppressRen
     const hCapacity=hospitals.find(function(h){return h.name===hospital;});
     if(!hCapacity){fail='ไม่พบโรงพยาบาลปลายทาง';return null;}
     const type=normU(vehicle.type||vehicleType(vehicleName));
-    const sitting=assigned.filter(function(p){return effectiveCanWalk(p)==='yes';}).length;
-    const lying=assigned.length-sitting;
-    const load=calcVehicleLoad(type,assigned.length,sitting,lying,1);
+    const load=loadingPassengerLoad(vehicle,assigned,casesNow);
     if(!load.ok){fail='โหลดเกินกำหนด: '+load.label;return null;}
 
     const ms=Object.assign({},DEFAULT_GC.mapSettings,gcNow.mapSettings||{});
@@ -8565,6 +8605,11 @@ function patchTwoDFrameSource(source){
 #treatmentStage .bed.mobilityWalking .bedPt{left:50%!important;top:48%!important}
 #treatmentStage .bed.mciTreatmentWalkingOut{z-index:160!important;pointer-events:none!important;cursor:default!important}
 #treatmentStage .bed.mciTreatmentWalkingOut .bedLabel,#treatmentStage .bed.mciTreatmentWalkingOut .bedRing,#treatmentStage .bed.mciTreatmentWalkingOut .bedDeathMarker{opacity:0!important}
+#loadingPatients .patient.loadCompact{transition:none}
+#loadingPatients .patient.loadCompact .patientSprite{width:46px;height:58px}
+#loadingPatients .patient.loadCompact.lying .patientSprite{width:34px;height:70px;transform:translate(-50%,-50%) rotate(90deg)}
+#loadingPatients .patient.loadCompact .ptlabel{top:100%;margin-top:3px}
+.vehicle .onboard.assetOnboard.stretcherRider{transform:translateX(11px) rotate(90deg)}
 .bagItemRow.bagReturnable{cursor:pointer;border-color:#62e5d466}.bagItemRow.bagReturnable:hover{background:#4fb26818;box-shadow:0 0 0 2px #62e5d422}.bagItemRow.bagReturnable .bagItemMeta small::after{content:" · กดเพื่อเดินไปคืนที่ตู้";color:#75dfd1}
 html[lang="en"] .bagItemRow.bagReturnable .bagItemMeta small::after{content:" · Tap to return to the supply cabinet"}
 .doctor.zoneHeadDoctor{animation:mciZoneHeadGlow 1.35s ease-in-out infinite!important}@keyframes mciZoneHeadGlow{0%,100%{filter:drop-shadow(0 0 6px #ffe66f) drop-shadow(0 8px 5px #0008)}50%{filter:drop-shadow(0 0 17px #fff27f) drop-shadow(0 0 8px #ffbd2e) drop-shadow(0 8px 5px #0008)}}
@@ -8650,6 +8695,48 @@ function peerEl(key,gender){const e=document.createElement('div');e.className='d
   source=source.replace('MCI 2D Complete Game v5.5 · Mobility + Cooperative Treatment','MCI 2D Complete Game v6.5 · Radio–Backpack Alignment');
   source=source.replace("setInterval(()=>emit(false),80);", "document.addEventListener('click',()=>send('uiOpen',{}),true);setInterval(()=>emit(false),80);");
   source=source.replace("bagTransferPending=true;renderFriendTransfer();send('transferCarriedItem'", "bagTransferPending=true;renderFriendTransfer();emit(true);send('transferCarriedItem'");
+  const treatmentLayout=`
+function placeTreatmentBeds(patients,box){
+ const existing=new Map([...box.querySelectorAll('.bed')].map(bed=>[bed.dataset.id,bed]));
+ const positions=new Map();
+ const fits=point=>![...positions.values()].some(other=>Math.abs(point.x-other.x)<195&&Math.abs(point.y-other.y)<116);
+ const slots=treatmentBedSlots.map(([x,y])=>({x,y}));
+ for(const patient of patients){
+   const bed=existing.get(String(patient.id));
+   if(!bed)continue;
+   const point={x:Number(bed.dataset.bedX),y:Number(bed.dataset.bedY)};
+   if(Number.isFinite(point.x)&&Number.isFinite(point.y)&&fits(point))positions.set(String(patient.id),point);
+ }
+ for(const patient of patients){
+   const id=String(patient.id);
+   if(positions.has(id))continue;
+   const free=slots.find(fits);
+   // A dragged bed can straddle two bays. Restore the default layout if needed.
+   if(!free)return new Map(patients.map((p,index)=>[String(p.id),slots[index]]));
+   positions.set(id,free);
+ }
+ return positions;
+}
+`;
+  source=source.replace('function renderTreatment(){',treatmentLayout+'function renderTreatment(){');
+  source=source.replace("if(!wanted.has(bed.dataset.id)&&!patientAnimating[bed.dataset.id])bed.remove();",
+    "if(bed.dataset.zone!==z||(!wanted.has(bed.dataset.id)&&!patientAnimating[bed.dataset.id]))bed.remove();");
+  source=source.replace("activePts.forEach((p,i)=>{\n   if(!p.bedPos)p.bedPos={x:treatmentBedSlots[i][0],y:treatmentBedSlots[i][1]};",
+    "const positions=placeTreatmentBeds(activePts,box);\n activePts.forEach(p=>{\n   const point=positions.get(String(p.id));");
+  source=source.replace("bed.dataset.id=p.id;bed.style.left=p.bedPos.x+'px';bed.style.top=p.bedPos.y+'px';",
+    "bed.dataset.id=p.id;bed.dataset.zone=z;");
+  source=source.replace("   const dead=p.status==='black'||p.status==='dead',walking=!dead&&p.mobility==='Walking';",
+    "   if(!bed.classList.contains('dragging')){bed.dataset.bedX=point.x;bed.dataset.bedY=point.y;bed.style.left=point.x+'px';bed.style.top=point.y+'px';}\n   const dead=p.status==='black'||p.status==='dead',walking=!dead&&p.mobility==='Walking';");
+  source=source.replace("p.bedPos={x:bed.offsetLeft,y:bed.offsetTop};saveState()",
+    "bed.dataset.bedX=bed.offsetLeft;bed.dataset.bedY=bed.offsetTop;saveState()");
+  source=source.replace("function initBedDrag(bed,p){","function initBedDrag(bed){");
+  source=source.replace("initBedDrag(bed,p);","initBedDrag(bed);");
+  source=source.replace("const base={red:55,yellow:480,green:905}[color],col=i%4,row=Math.floor(i/4)%5;\n return {x:base+40+col*88,y:130+row*66};",
+    "const base={red:82,yellow:477,green:879}[color],col=i%4,row=Math.floor(i/4);\n return {x:base+col*96,y:76+row*80};");
+  source=source.replace('class="onboard assetOnboard" src="${patientAssetSrc(state.patients[pid],true)}"',
+    'class="onboard assetOnboard${state.patients[pid]?.mobility===\'Walking\'?\'\':\' stretcherRider\'}" src="${patientAssetSrc(state.patients[pid])}"');
+  source=source.replace('class="onboardThumb" src="${patientAssetSrc(p,true)}"',
+    'class="onboardThumb" src="${patientAssetSrc(p)}"');
   return source;
 }
 function decodeTwoDFrameSource(){const raw=atob(TWO_D_FRAME_SOURCE_B64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);const source=new TextDecoder('utf-8').decode(bytes).replace(/\n\/\* Dynamic-zone v7: Holding was removed from the game model\. \*\/\n#secondaryStage \.secHold,#treatmentStage \.holdingArea\{display:none!important\}\n#treatmentStage \.tRoom:after\{content:"8 ACTIVE CARE BAYS • CAPACITY 8"!important\}\n/,'');return patchTwoDFrameSource(source)}
@@ -9953,10 +10040,14 @@ function viewTransfer(){
   const selectedLoadingVehicle=loadingVehicles.find(function(v){return v.name===selectedLoadingVehicleId;})||null;
   const loadingVehicleOptions='<option value="">— เลือกรถที่จอดรอใน Loading —</option>'+loadingVehicles.map(function(v){const state=vehicleWorkflowState(v,elapsed),queued=state!=='LOADING_BAY';return '<option value="'+esc(v.name)+'" '+(selectedLoadingVehicle&&selectedLoadingVehicle.name===v.name?'selected':'')+'>'+esc(v.name)+' · '+esc(v.type)+(queued?' · คิว '+esc(v.loadingQueuePos||''):' · คันหน้า')+'</option>';}).join('');
   const detailId=STATE.ui.twoD&&STATE.ui.twoD.detailPatientId,detailP=queue.find(function(p){return normU(p.id)===normU(detailId);});
+  const boardingLoad=detailP&&!detailP.boardedVehicle&&selectedLoadingVehicle
+    ?loadingBoardingLoad(selectedLoadingVehicle,detailP,queue,(STATE.porters||{}).jobs,STATE.cases):null;
   const detailHtml=detailP?'<div class="patient-card stripe-'+esc(detailP.secondary||detailP.primary||'')+' section-gap"><div class="flexrow" style="justify-content:space-between"><div class="pidrow" style="padding-right:0">'+patientFocusAvatarHtml(detailP,detailP.secondary||detailP.primary||'gray')+'<span class="pid">#'+esc(detailP.id)+'</span>'+canWalkBadge(effectiveCanWalk(detailP))+'</div><button class="btn sm ghost" data-act="twoDClearTransferPatient">✕ ปิดรายละเอียด</button></div>'
     +clinicalCaseDetailsHtml(detailP,{mode:'staged',stage:'TRANSFER',elapsed:elapsed})
     +loadingTreatmentHistoryHtml(detailP,elapsed)
-    +(detailP.boardedVehicle?'<div class="badge ok">อยู่บนรถ '+esc(detailP.boardedVehicle)+'</div>':'<div class="section-gap"><label class="label">เลือกรถที่จะนำผู้ป่วยขึ้น</label><select class="input" data-act="twoDSelectLoadingVehicle">'+loadingVehicleOptions+'</select>'+(hasQueuedLoadingVehicle?'<div class="hint">นำผู้ป่วยขึ้นรถที่ต่อคิวไว้ก่อนได้ · รถจะส่งออกได้เมื่อเลื่อนถึงคันหน้าเท่านั้น</div>':loadingVehicles.length?'':'<div class="hint">ยังไม่มีรถที่ Loading</div>')+'<button class="btn primary block" data-act="twoDBoardTransferPatient" data-pid="'+esc(detailP.id)+'" data-vehicle="'+esc(selectedLoadingVehicle&&selectedLoadingVehicle.name||'')+'" '+(!selectedLoadingVehicle||patientIsDead(detailP,elapsed)?'disabled':'')+'>'+(selectedLoadingVehicle?'นำผู้ป่วยขึ้น '+esc(selectedLoadingVehicle.name):'เลือกรถก่อนนำผู้ป่วยขึ้น')+'</button></div>')
+    +(detailP.boardedVehicle?'<div class="badge ok">อยู่บนรถ '+esc(detailP.boardedVehicle)+'</div>':'<div class="section-gap"><label class="label">เลือกรถที่จะนำผู้ป่วยขึ้น</label><select class="input" data-act="twoDSelectLoadingVehicle">'+loadingVehicleOptions+'</select>'+(hasQueuedLoadingVehicle?'<div class="hint">นำผู้ป่วยขึ้นรถที่ต่อคิวไว้ก่อนได้ · รถจะส่งออกได้เมื่อเลื่อนถึงคันหน้าเท่านั้น</div>':loadingVehicles.length?'':'<div class="hint">ยังไม่มีรถที่ Loading</div>')
+      +(boardingLoad&&!boardingLoad.ok?'<div class="hint">'+esc(boardingLoad.label)+'</div>':'')
+      +'<button class="btn primary block" data-act="twoDBoardTransferPatient" data-pid="'+esc(detailP.id)+'" data-vehicle="'+esc(selectedLoadingVehicle&&selectedLoadingVehicle.name||'')+'" '+(!boardingLoad||!boardingLoad.ok||patientIsDead(detailP,elapsed)?'disabled':'')+'>'+(selectedLoadingVehicle?'นำผู้ป่วยขึ้น '+esc(selectedLoadingVehicle.name):'เลือกรถก่อนนำผู้ป่วยขึ้น')+'</button></div>')
     +'</div>':'';
   return detailHtml||'<div class="focused-patient-empty">คลิกผู้ป่วยในฉาก Loading เพื่อดูข้อมูลเฉพาะคนและนำขึ้นรถ</div>';
   /* Legacy form below is intentionally unreachable. It remains in-source only
