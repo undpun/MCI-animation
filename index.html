@@ -8605,9 +8605,11 @@ function patchTwoDFrameSource(source){
 #treatmentStage .bed.mobilityWalking .bedPt{left:50%!important;top:48%!important}
 #treatmentStage .bed.mciTreatmentWalkingOut{z-index:160!important;pointer-events:none!important;cursor:default!important}
 #treatmentStage .bed.mciTreatmentWalkingOut .bedLabel,#treatmentStage .bed.mciTreatmentWalkingOut .bedRing,#treatmentStage .bed.mciTreatmentWalkingOut .bedDeathMarker{opacity:0!important}
+#loadingStage .loadingBox:before{top:-54px}
 #loadingPatients .patient.loadCompact{transition:none}
 #loadingPatients .patient.loadCompact .patientSprite{width:46px;height:58px}
-#loadingPatients .patient.loadCompact.lying .patientSprite{width:34px;height:70px;transform:translate(-50%,-50%) rotate(90deg)}
+#loadingPatients .patient.loadCompact.lying{width:66px}
+#loadingPatients .patient.loadCompact.lying .patientSprite{width:34px;height:62px;transform:translate(-50%,-50%) rotate(90deg)}
 #loadingPatients .patient.loadCompact .ptlabel{top:100%;margin-top:3px}
 .vehicle .onboard.assetOnboard.stretcherRider{transform:translateX(11px) rotate(90deg)}
 .bagItemRow.bagReturnable{cursor:pointer;border-color:#62e5d466}.bagItemRow.bagReturnable:hover{background:#4fb26818;box-shadow:0 0 0 2px #62e5d422}.bagItemRow.bagReturnable .bagItemMeta small::after{content:" · กดเพื่อเดินไปคืนที่ตู้";color:#75dfd1}
@@ -8732,7 +8734,7 @@ function placeTreatmentBeds(patients,box){
   source=source.replace("function initBedDrag(bed,p){","function initBedDrag(bed){");
   source=source.replace("initBedDrag(bed,p);","initBedDrag(bed);");
   source=source.replace("const base={red:55,yellow:480,green:905}[color],col=i%4,row=Math.floor(i/4)%5;\n return {x:base+40+col*88,y:130+row*66};",
-    "const base={red:82,yellow:477,green:879}[color],col=i%4,row=Math.floor(i/4);\n return {x:base+col*96,y:76+row*80};");
+    "const base={red:70,yellow:470,green:868}[color],col=i%5,row=Math.floor(i/5);\n return {x:base+col*73,y:62+row*81};");
   source=source.replace('class="onboard assetOnboard" src="${patientAssetSrc(state.patients[pid],true)}"',
     'class="onboard assetOnboard${state.patients[pid]?.mobility===\'Walking\'?\'\':\' stretcherRider\'}" src="${patientAssetSrc(state.patients[pid])}"');
   source=source.replace('class="onboardThumb" src="${patientAssetSrc(p,true)}"',

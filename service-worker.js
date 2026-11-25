@@ -1,4 +1,4 @@
-const CACHE_VERSION='mci-2d-v6.27-treatment-loading-1';
+const CACHE_VERSION='mci-2d-v6.27-treatment-loading-2';
 const APP_SHELL=[
   './',
   './index.html',
